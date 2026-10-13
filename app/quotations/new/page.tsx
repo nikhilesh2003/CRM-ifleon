@@ -123,6 +123,8 @@ function NewQuotationPage() {
     }
   }, [selectedLeadId, leads]);
 
+  if (!currentUser) return null;
+
   // Calculations
   const subtotal = lineItems.reduce((sum, item) => sum + item.amount, 0);
   const total = Math.max(0, subtotal - discount);

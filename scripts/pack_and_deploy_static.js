@@ -27,7 +27,7 @@ if (fs.existsSync(srcStore)) {
 }
 
 // Copy page.html to directory/index.html so both /route and /route/ work with 0 redirects!
-const routeDirs = ['leads', 'quotations', 'tasks', 'analytics', 'projects', 'review-inbox', 'audit-log'];
+const routeDirs = ['login', 'register', 'leads', 'quotations', 'tasks', 'analytics', 'projects', 'review-inbox', 'audit-log'];
 for (const r of routeDirs) {
   const htmlFile = path.join(outDir, `${r}.html`);
   const destDir = path.join(outDir, r);
@@ -47,21 +47,24 @@ const htaccessContent = `<IfModule mod_rewrite.c>
   RewriteRule ^api/(.*)$ api/index.php [QSA,L]
   RewriteRule ^api$ api/index.php [QSA,L]
 
-  # 2. Existing static files and directories
-  RewriteCond %{REQUEST_FILENAME} -f [OR]
-  RewriteCond %{REQUEST_FILENAME} -d
+  # 2. Existing static files
+  RewriteCond %{REQUEST_FILENAME} -f
   RewriteRule ^ - [L]
 
   # 3. Dynamic lead detail fallback: /leads/{any_id} -> leads/[id].html
   RewriteRule ^leads/([^/]+)/?$ leads/[id].html [L]
 
-  # 4. Clean URLs without .html extension
+  # 4. Clean URLs without .html extension (serves $1.html directly with 0 redirects)
   RewriteCond %{DOCUMENT_ROOT}/$1.html -f
   RewriteRule ^([^/]+)/?$ $1.html [L]
 
   # 5. Clean URLs in subdirectories (admin/users, admin/settings)
   RewriteCond %{DOCUMENT_ROOT}/$1/$2.html -f
   RewriteRule ^([^/]+)/([^/]+)/?$ $1/$2.html [L]
+
+  # 6. Existing directories
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
 
   # 6. SPA Fallback
   RewriteCond %{REQUEST_FILENAME} !-f
@@ -99,28 +102,21 @@ conn.on('ready', () => {
     console.log('Uploading deploy_site.tar.gz to remote server...');
     sftp.fastPut(tarPath, remoteTar, (upErr) => {
       if (upErr) throw upErr;
-      console.log('Upload complete! Extracting on remote server...');
+      console.log('Upload complete! Closing SFTP channel and extracting on remote server...');
+      sftp.end();
 
-      const cmd = `
-        cd ${remoteTargetDir}
-        # Clear out legacy files
-        pkill -f "entry.js" 2>/dev/null || true
-        rm -f crm.sock crm.log entry.js index.php runner.js server.js default.php
-
-        # Extract new site
-        tar -xzf deploy_site.tar.gz
-        rm -f deploy_site.tar.gz
-
-        # Set permissions
-        chmod -R 755 .
-        chmod -R 777 data
-        chmod 644 .htaccess
-
-        echo "=== DEPLOYMENT COMPLETE ==="
-        ls -la
-        ls -la data
-        ls -la api
-      `;
+      const cmd = [
+        `cd ${remoteTargetDir}`,
+        'pkill -f "entry.js" 2>/dev/null || true',
+        'rm -f crm.sock crm.log entry.js index.php runner.js server.js default.php',
+        'tar -xzf deploy_site.tar.gz',
+        'rm -f deploy_site.tar.gz',
+        'chmod -R 755 .',
+        'chmod -R 777 data',
+        'chmod 644 .htaccess',
+        'echo "=== DEPLOYMENT COMPLETE ==="',
+        'ls -la api',
+      ].join(' && ');
 
       conn.exec(cmd, (exErr, stream) => {
         if (exErr) throw exErr;

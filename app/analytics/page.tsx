@@ -46,6 +46,8 @@ export default function AnalyticsPage() {
     loadData();
   }, []);
 
+  if (!currentUser) return null;
+
   const isAdmin = currentUser.role === 'admin';
   const isManager = currentUser.role === 'manager';
   const isConsultant = currentUser.role === 'consultant';

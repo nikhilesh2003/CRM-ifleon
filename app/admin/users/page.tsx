@@ -45,6 +45,7 @@ export default function UserManagementPage() {
     fetchUsers();
   }, []);
 
+  if (!currentUser) return null;
   const isAdmin = currentUser.role === 'admin';
 
   if (!isAdmin) {
@@ -53,7 +54,7 @@ export default function UserManagementPage() {
         <AlertCircle className="w-10 h-10 text-rose-500 mx-auto" />
         <h2 className="text-lg font-bold text-slate-900 dark:text-white">Admin Privileges Required</h2>
         <p className="text-xs text-slate-500">
-          User management is restricted to Administrators only. Use the role switcher in the header to switch to Rajesh Kumar (Admin).
+          User access control is restricted to Administrators only. Please sign in with an administrator account.
         </p>
       </div>
     );

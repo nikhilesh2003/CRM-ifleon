@@ -50,6 +50,7 @@ export default function ProjectsPage() {
     fetchProjectData();
   }, []);
 
+  if (!currentUser) return null;
   const isManagerOrAdmin = currentUser.role === 'admin' || currentUser.role === 'manager';
 
   const handleCreateProject = async (e: React.FormEvent) => {

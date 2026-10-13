@@ -1,6 +1,17 @@
 import { NextResponse } from 'next/server';
 import { getDb, saveDb, logAudit } from '@/lib/store';
 
+export async function generateStaticParams() {
+  return [
+    { id: 'lead-1' },
+    { id: 'lead-2' },
+    { id: 'lead-3' },
+    { id: 'lead-4' },
+    { id: 'lead-5' },
+    { id: 'preview' },
+  ];
+}
+
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   const db = getDb();
   const lead = db.leads.find((l) => l.id === params.id);

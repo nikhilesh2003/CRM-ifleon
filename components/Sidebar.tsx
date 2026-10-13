@@ -35,7 +35,9 @@ interface NavSection {
 export default function Sidebar() {
   const pathname = usePathname();
   const { currentUser } = useCRM();
-  const role = currentUser.role;
+
+  if (!currentUser) return null;
+  const role = currentUser.role || 'consultant';
 
   const [leadCount, setLeadCount] = useState<number | null>(null);
   const [pendingReviewCount, setPendingReviewCount] = useState<number | null>(null);

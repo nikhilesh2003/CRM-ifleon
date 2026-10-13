@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/move_api.js && next build && node scripts/restore_api.js",
     "start": "next start",
     "lint": "next lint"
   },

@@ -84,6 +84,7 @@ function AdminSettingsPage() {
     loadData();
   }, []);
 
+  if (!currentUser) return null;
   const isAdmin = currentUser.role === 'admin';
 
   if (!isAdmin) {
@@ -92,7 +93,7 @@ function AdminSettingsPage() {
         <AlertCircle className="w-10 h-10 text-rose-500 mx-auto" />
         <h2 className="text-lg font-bold text-slate-900 dark:text-white">Admin Privileges Required</h2>
         <p className="text-xs text-slate-500">
-          Settings are restricted to Administrators only. Use the top role switcher to select Rajesh Kumar (Admin).
+          System configuration is restricted to Administrators only. Please sign in with an administrator account.
         </p>
       </div>
     );

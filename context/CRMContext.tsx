@@ -1,13 +1,39 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, CRMTheme, CompanySettings } from '@/lib/types';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { User, CRMTheme, CompanySettings, AuthSession, UserRole } from '@/lib/types';
+
+interface LoginCredentials {
+  email: string;
+  password?: string;
+  rememberMe?: boolean;
+}
+
+interface RegisterFormData {
+  name: string;
+  email: string;
+  phone?: string;
+  role?: UserRole;
+  department?: string;
+  password?: string;
+  rememberMe?: boolean;
+}
 
 interface CRMContextType {
-  currentUser: User;
+  currentUser: User | null;
+  session: AuthSession | null;
   allUsers: User[];
-  setCurrentUser: (user: User) => void;
+  isLoadingAuth: boolean;
+  setCurrentUser: (user: User | null) => void;
+  login: (creds: LoginCredentials) => Promise<{ success: boolean; error?: string }>;
+  loginWithGoogle: (details?: { email?: string; name?: string; rememberMe?: boolean }) => Promise<{ success: boolean; error?: string }>;
+  register: (data: RegisterFormData) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
   switchUserById: (userId: string) => Promise<void>;
+  isTutorialOpen: boolean;
+  openTutorial: () => void;
+  closeTutorial: () => void;
+  completeTutorial: () => Promise<void>;
   theme: CRMTheme | null;
   setTheme: (theme: CRMTheme) => void;
   settings: CompanySettings | null;
@@ -19,17 +45,15 @@ interface CRMContextType {
 
 const CRMContext = createContext<CRMContextType | undefined>(undefined);
 
+const SESSION_STORAGE_KEY = 'ifleon_session';
+
 export function CRMProvider({ children }: { children: ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<User>({
-    id: 'user-admin',
-    name: 'Rajesh Kumar',
-    email: 'admin@ifleon.com',
-    role: 'admin',
-    phone: '+91 98480 11223',
-    disabled: false,
-    createdAt: '2026-01-10T10:00:00Z',
-  });
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [session, setSession] = useState<AuthSession | null>(null);
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [isLoadingAuth, setIsLoadingAuth] = useState<boolean>(true);
+  const [isTutorialOpen, setIsTutorialOpen] = useState<boolean>(false);
+
   const [theme, setTheme] = useState<CRMTheme | null>(null);
   const [settings, setSettings] = useState<CompanySettings | null>(null);
   const [isDark, setIsDark] = useState<boolean>(false);
@@ -57,21 +81,6 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const fetchSession = async () => {
-    try {
-      const res = await fetch('/api/auth');
-      const data = await res.json();
-      if (data.user) {
-        setCurrentUser(data.user);
-      }
-      if (data.allUsers) {
-        setAllUsers(data.allUsers);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   const refreshSettings = async () => {
     try {
       const res = await fetch('/api/admin/settings');
@@ -94,21 +103,209 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch (e) {
-      console.error(e);
+      console.error('Error fetching settings:', e);
     }
   };
 
+  // Restore and validate session from localStorage on mount
   useEffect(() => {
-    fetchSession();
+    async function initSession() {
+      setIsLoadingAuth(true);
+      try {
+        if (typeof window !== 'undefined') {
+          const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+          if (raw) {
+            const parsedSession: AuthSession = JSON.parse(raw);
+            const now = Date.now();
+
+            // Check session expiration
+            if (now > parsedSession.expiresAt) {
+              // Session expired!
+              console.warn('Session has expired, clearing stored session.');
+              localStorage.removeItem(SESSION_STORAGE_KEY);
+              setSession(null);
+              setCurrentUser(null);
+              setIsLoadingAuth(false);
+              return;
+            }
+
+            // Session is valid, fetch user profile
+            const res = await fetch(`/api/auth?userId=${encodeURIComponent(parsedSession.userId)}`);
+            const data = await res.json();
+            if (data.user && !data.user.disabled) {
+              setSession(parsedSession);
+              setCurrentUser(data.user);
+              if (data.allUsers) setAllUsers(data.allUsers);
+
+              // Check if first-time tutorial should be shown
+              const tutorialSeen = localStorage.getItem(`ifleon_tutorial_seen_${data.user.id}`);
+              if (!data.user.tutorialCompleted && !tutorialSeen) {
+                setIsTutorialOpen(true);
+              }
+            } else {
+              localStorage.removeItem(SESSION_STORAGE_KEY);
+              setSession(null);
+              setCurrentUser(null);
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Failed to restore session:', e);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(SESSION_STORAGE_KEY);
+        }
+        setSession(null);
+        setCurrentUser(null);
+      } finally {
+        setIsLoadingAuth(false);
+      }
+    }
+
+    initSession();
     refreshSettings();
   }, []);
 
+  // Login handler
+  const login = useCallback(async (creds: LoginCredentials): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'login',
+          email: creds.email,
+          password: creds.password,
+          rememberMe: creds.rememberMe,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        return { success: false, error: data.error || 'Authentication failed.' };
+      }
+
+      setSession(data.session);
+      setCurrentUser(data.user);
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(data.session));
+      }
+
+      // Check first-time tutorial
+      const tutorialSeen = typeof window !== 'undefined' ? localStorage.getItem(`ifleon_tutorial_seen_${data.user.id}`) : null;
+      if (!data.user.tutorialCompleted && !tutorialSeen) {
+        setIsTutorialOpen(true);
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Unable to connect to the authentication service.' };
+    }
+  }, []);
+
+  // Google SSO login handler
+  const loginWithGoogle = useCallback(async (details?: { email?: string; name?: string; rememberMe?: boolean }): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'google',
+          email: details?.email || 'rajesh.kumar@ifleon.com',
+          name: details?.name || 'Rajesh Kumar',
+          rememberMe: details?.rememberMe ?? true,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        return { success: false, error: data.error || 'Google SSO authentication failed.' };
+      }
+
+      setSession(data.session);
+      setCurrentUser(data.user);
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(data.session));
+      }
+
+      const tutorialSeen = typeof window !== 'undefined' ? localStorage.getItem(`ifleon_tutorial_seen_${data.user.id}`) : null;
+      if (!data.user.tutorialCompleted && !tutorialSeen) {
+        setIsTutorialOpen(true);
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Unable to connect to Google SSO.' };
+    }
+  }, []);
+
+  // Registration handler
+  const register = useCallback(async (data: RegisterFormData): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'register',
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          role: data.role || 'consultant',
+          department: data.department,
+          password: data.password,
+          rememberMe: data.rememberMe,
+        }),
+      });
+
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        return { success: false, error: result.error || 'Registration failed.' };
+      }
+
+      setSession(result.session);
+      setCurrentUser(result.user);
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(result.session));
+      }
+
+      // Automatically launch onboarding tutorial for new user
+      setIsTutorialOpen(true);
+
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Unable to complete registration.' };
+    }
+  }, []);
+
+  // Logout handler
+  const logout = useCallback(async () => {
+    try {
+      await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'logout' }),
+      });
+    } catch (e) {
+      console.error('Logout error:', e);
+    } finally {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(SESSION_STORAGE_KEY);
+      }
+      setSession(null);
+      setCurrentUser(null);
+      setIsTutorialOpen(false);
+    }
+  }, []);
+
+  // Legacy switch user for dev/testing
   const switchUserById = async (userId: string) => {
     try {
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ userId, action: 'switch' }),
       });
       const data = await res.json();
       if (data.user) {
@@ -116,6 +313,31 @@ export function CRMProvider({ children }: { children: ReactNode }) {
       }
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const openTutorial = () => setIsTutorialOpen(true);
+  const closeTutorial = () => setIsTutorialOpen(false);
+
+  const completeTutorial = async () => {
+    if (!currentUser) {
+      setIsTutorialOpen(false);
+      return;
+    }
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`ifleon_tutorial_seen_${currentUser.id}`, 'true');
+      }
+      await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'tutorial_complete', userId: currentUser.id }),
+      });
+      setCurrentUser((prev) => (prev ? { ...prev, tutorialCompleted: true } : null));
+    } catch (e) {
+      console.error('Error recording tutorial completion:', e);
+    } finally {
+      setIsTutorialOpen(false);
     }
   };
 
@@ -139,9 +361,19 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     <CRMContext.Provider
       value={{
         currentUser,
+        session,
         allUsers,
+        isLoadingAuth,
         setCurrentUser,
+        login,
+        loginWithGoogle,
+        register,
+        logout,
         switchUserById,
+        isTutorialOpen,
+        openTutorial,
+        closeTutorial,
+        completeTutorial,
         theme,
         setTheme,
         settings,
@@ -154,7 +386,6 @@ export function CRMProvider({ children }: { children: ReactNode }) {
       <div
         className="contents"
         style={{
-          // Apply dynamic custom CSS variables if custom AI theme is active
           ...(theme ? {
             '--theme-primary': theme.primaryColor,
             '--theme-card': theme.cardBackground,

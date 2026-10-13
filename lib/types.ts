@@ -9,6 +9,20 @@ export interface User {
   avatar?: string;
   disabled: boolean;
   createdAt: string;
+  password?: string;
+  department?: string;
+  tutorialCompleted?: boolean;
+  googleLinked?: boolean;
+}
+
+export interface AuthSession {
+  userId: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  rememberMe: boolean;
+  loginTime: number;
+  expiresAt: number;
 }
 
 export type LeadStatus =

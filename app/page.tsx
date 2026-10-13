@@ -58,6 +58,8 @@ export default function DashboardPage() {
 
   const todayStr = new Date().toISOString().slice(0, 10);
 
+  if (!currentUser) return null;
+
   const isConsultant = currentUser.role === 'consultant';
   const isManager = currentUser.role === 'manager';
   const isAdmin = currentUser.role === 'admin';

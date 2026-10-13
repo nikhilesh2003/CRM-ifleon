@@ -37,6 +37,7 @@ export default function AuditLogPage() {
     fetchLogs();
   }, []);
 
+  if (!currentUser) return null;
   const isAuthorized = currentUser.role === 'admin' || currentUser.role === 'manager';
 
   if (!isAuthorized) {

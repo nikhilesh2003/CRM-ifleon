@@ -1,8 +1,7 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { CRMProvider } from '@/context/CRMContext';
-import Navbar from '@/components/Navbar';
-import Sidebar from '@/components/Sidebar';
+import AppShell from '@/components/AppShell';
 
 export const metadata: Metadata = {
   title: 'iFleon CRM | Intelligent Frameworks',
@@ -42,15 +41,9 @@ export default function RootLayout({
       </head>
       <body className="bg-[#F8FAFC] dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 antialiased selection:bg-blue-600 selection:text-white transition-colors duration-150">
         <CRMProvider>
-          <div className="min-h-screen flex flex-col">
-            <Navbar />
-            <div className="flex flex-1">
-              <Sidebar />
-              <main className="flex-1 overflow-x-hidden min-h-[calc(100vh-4rem)] p-4 sm:p-6 lg:p-8">
-                {children}
-              </main>
-            </div>
-          </div>
+          <AppShell>
+            {children}
+          </AppShell>
         </CRMProvider>
       </body>
     </html>

@@ -50,6 +50,8 @@ export default function TasksPage() {
 
   const todayStr = new Date().toISOString().slice(0, 10);
 
+  if (!currentUser) return null;
+
   // Due today follow-up leads
   const dueTodayLeads = leads.filter(
     (l) => l.followUpDate === todayStr && l.status !== 'Won' && l.status !== 'Lost'

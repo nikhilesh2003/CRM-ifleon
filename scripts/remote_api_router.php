@@ -53,18 +53,230 @@ $db = get_db();
 
 // 1. /api/auth
 if ($resource === 'auth') {
+    // Sanitized users list (without passwords)
+    $sanitizedUsers = array_map(function($u) {
+        unset($u['password']);
+        return $u;
+    }, $db['users'] ?? []);
+
     if ($method === 'GET') {
         session_start();
-        $uid = $_SESSION['crm_user_id'] ?? 'user-admin';
+        $uid = $_GET['userId'] ?? ($_SESSION['crm_user_id'] ?? null);
         $user = null;
-        foreach ($db['users'] as $u) {
-            if ($u['id'] === $uid) { $user = $u; break; }
+        if ($uid) {
+            foreach ($db['users'] as $u) {
+                if ($u['id'] === $uid) { $user = $u; break; }
+            }
         }
         if (!$user && !empty($db['users'])) $user = $db['users'][0];
-        echo json_encode(['user' => $user, 'allUsers' => $db['users']]);
+        if ($user) unset($user['password']);
+        echo json_encode(['user' => $user, 'allUsers' => $sanitizedUsers]);
         exit;
     } elseif ($method === 'POST') {
         $input = get_input();
+        $action = $input['action'] ?? (!empty($input['userId']) ? 'switch' : 'login');
+
+        // Action: LOGIN
+        if ($action === 'login') {
+            $email = strtolower(trim($input['email'] ?? ''));
+            $pass = trim($input['password'] ?? '');
+            $rememberMe = !empty($input['rememberMe']);
+
+            if (empty($email) || empty($pass)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Email and password are required.']);
+                exit;
+            }
+
+            $foundUser = null;
+            foreach ($db['users'] as $u) {
+                if (strtolower($u['email'] ?? '') === $email) {
+                    $foundUser = $u;
+                    break;
+                }
+            }
+
+            if (!$foundUser) {
+                http_response_code(401);
+                echo json_encode(['error' => 'No account found with this email address.']);
+                exit;
+            }
+
+            if (!empty($foundUser['disabled'])) {
+                http_response_code(403);
+                echo json_encode(['error' => 'This account has been disabled. Please contact your CRM Administrator.']);
+                exit;
+            }
+
+            if (!empty($foundUser['password']) && $foundUser['password'] !== $pass) {
+                http_response_code(401);
+                echo json_encode(['error' => 'Incorrect password. Please try again.']);
+                exit;
+            }
+
+            session_start();
+            $_SESSION['crm_user_id'] = $foundUser['id'];
+
+            $now = round(microtime(true) * 1000);
+            $durationMs = $rememberMe ? (30 * 24 * 60 * 60 * 1000) : (24 * 60 * 60 * 1000);
+            $session = [
+                'userId' => $foundUser['id'],
+                'email' => $foundUser['email'],
+                'name' => $foundUser['name'],
+                'role' => $foundUser['role'],
+                'rememberMe' => $rememberMe,
+                'loginTime' => $now,
+                'expiresAt' => $now + $durationMs,
+            ];
+
+            unset($foundUser['password']);
+            echo json_encode(['success' => true, 'user' => $foundUser, 'session' => $session]);
+            exit;
+        }
+
+        // Action: GOOGLE SSO
+        if ($action === 'google') {
+            $email = strtolower(trim($input['email'] ?? 'rajesh.kumar@ifleon.com'));
+            $name = trim($input['name'] ?? 'Enterprise Google User');
+            $rememberMe = !empty($input['rememberMe']);
+
+            $foundUser = null;
+            foreach ($db['users'] as $u) {
+                if (strtolower($u['email'] ?? '') === $email) {
+                    $foundUser = $u;
+                    break;
+                }
+            }
+
+            if (!$foundUser) {
+                $newId = 'user-g-' . uniqid();
+                $foundUser = [
+                    'id' => $newId,
+                    'name' => $name,
+                    'email' => $email,
+                    'role' => 'consultant',
+                    'phone' => '+91 94900 00000',
+                    'department' => 'Corporate Outreach',
+                    'disabled' => false,
+                    'googleLinked' => true,
+                    'tutorialCompleted' => false,
+                    'createdAt' => date('c'),
+                ];
+                $db['users'][] = $foundUser;
+                save_db($db);
+            }
+
+            session_start();
+            $_SESSION['crm_user_id'] = $foundUser['id'];
+
+            $now = round(microtime(true) * 1000);
+            $durationMs = $rememberMe ? (30 * 24 * 60 * 60 * 1000) : (24 * 60 * 60 * 1000);
+            $session = [
+                'userId' => $foundUser['id'],
+                'email' => $foundUser['email'],
+                'name' => $foundUser['name'],
+                'role' => $foundUser['role'],
+                'rememberMe' => $rememberMe,
+                'loginTime' => $now,
+                'expiresAt' => $now + $durationMs,
+            ];
+
+            unset($foundUser['password']);
+            echo json_encode(['success' => true, 'user' => $foundUser, 'session' => $session]);
+            exit;
+        }
+
+        // Action: REGISTER
+        if ($action === 'register') {
+            $name = trim($input['name'] ?? '');
+            $email = strtolower(trim($input['email'] ?? ''));
+            $phone = trim($input['phone'] ?? '+91 98480 00000');
+            $role = $input['role'] ?? 'consultant';
+            $department = trim($input['department'] ?? 'Dealership Sales');
+            $pass = trim($input['password'] ?? '');
+            $rememberMe = !empty($input['rememberMe']);
+
+            if (empty($name) || empty($email) || empty($pass)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Name, email, and password are required.']);
+                exit;
+            }
+
+            foreach ($db['users'] as $u) {
+                if (strtolower($u['email'] ?? '') === $email) {
+                    http_response_code(409);
+                    echo json_encode(['error' => 'An account with this email address already exists.']);
+                    exit;
+                }
+            }
+
+            $newUser = [
+                'id' => 'user-' . uniqid(),
+                'name' => $name,
+                'email' => $email,
+                'phone' => $phone,
+                'role' => in_array($role, ['admin', 'manager', 'consultant']) ? $role : 'consultant',
+                'department' => $department,
+                'password' => $pass,
+                'disabled' => false,
+                'tutorialCompleted' => false,
+                'createdAt' => date('c'),
+            ];
+
+            $db['users'][] = $newUser;
+            save_db($db);
+
+            session_start();
+            $_SESSION['crm_user_id'] = $newUser['id'];
+
+            $now = round(microtime(true) * 1000);
+            $durationMs = $rememberMe ? (30 * 24 * 60 * 60 * 1000) : (24 * 60 * 60 * 1000);
+            $session = [
+                'userId' => $newUser['id'],
+                'email' => $newUser['email'],
+                'name' => $newUser['name'],
+                'role' => $newUser['role'],
+                'rememberMe' => $rememberMe,
+                'loginTime' => $now,
+                'expiresAt' => $now + $durationMs,
+            ];
+
+            unset($newUser['password']);
+            echo json_encode(['success' => true, 'user' => $newUser, 'session' => $session]);
+            exit;
+        }
+
+        // Action: TUTORIAL COMPLETE
+        if ($action === 'tutorial_complete') {
+            $userId = $input['userId'] ?? '';
+            $found = null;
+            foreach ($db['users'] as &$u) {
+                if ($u['id'] === $userId) {
+                    $u['tutorialCompleted'] = true;
+                    $found = $u;
+                    break;
+                }
+            }
+            if ($found) {
+                save_db($db);
+                unset($found['password']);
+                echo json_encode(['success' => true, 'user' => $found]);
+            } else {
+                http_response_code(404);
+                echo json_encode(['error' => 'User not found']);
+            }
+            exit;
+        }
+
+        // Action: LOGOUT
+        if ($action === 'logout') {
+            session_start();
+            unset($_SESSION['crm_user_id']);
+            echo json_encode(['success' => true]);
+            exit;
+        }
+
+        // Action: SWITCH (Dev/Demo fallback)
         $uid = $input['userId'] ?? 'user-admin';
         session_start();
         $_SESSION['crm_user_id'] = $uid;
@@ -72,7 +284,8 @@ if ($resource === 'auth') {
         foreach ($db['users'] as $u) {
             if ($u['id'] === $uid) { $user = $u; break; }
         }
-        echo json_encode(['user' => $user, 'allUsers' => $db['users']]);
+        if ($user) unset($user['password']);
+        echo json_encode(['user' => $user, 'allUsers' => $sanitizedUsers]);
         exit;
     }
 }

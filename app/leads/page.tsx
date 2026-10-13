@@ -233,6 +233,8 @@ function LeadsPage() {
     }
   };
 
+  if (!currentUser) return null;
+
   const canEditLead = (lead: Lead) => {
     if (currentUser.role === 'admin' || currentUser.role === 'manager') return true;
     return lead.consultantId === currentUser.id;

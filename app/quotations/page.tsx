@@ -101,6 +101,7 @@ export default function QuotationsListPage() {
     return doc.type === filterType;
   });
 
+  if (!currentUser) return null;
   const isManagerOrAdmin = currentUser.role === 'admin' || currentUser.role === 'manager';
 
   return (
