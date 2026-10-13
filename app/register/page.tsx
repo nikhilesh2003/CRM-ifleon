@@ -22,7 +22,7 @@ import {
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register, loginWithGoogle, isDark } = useCRM();
+  const { register, loginWithGoogle, isDark, settings } = useCRM();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -101,8 +101,12 @@ export default function RegisterPage() {
         <div className="px-6 pt-8 pb-6 border-b border-slate-100 dark:border-[#1E2A3E] text-center bg-slate-50/50 dark:bg-[#172132]/30">
           <div className="h-10 flex items-center justify-center mb-4">
             <img
-              src={isDark ? '/logo-dark-horizontal.png' : '/logo-light-horizontal.png'}
-              alt="iFleon Intelligent Frameworks"
+              src={
+                isDark
+                  ? settings?.darkLogoUrl || '/logo-dark-horizontal.png'
+                  : settings?.lightLogoUrl || settings?.horizontalLogoUrl || '/logo-light-horizontal.png'
+              }
+              alt={settings?.name || 'iFleon Intelligent Frameworks'}
               className="h-9 w-auto object-contain"
             />
           </div>

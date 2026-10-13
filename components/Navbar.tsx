@@ -29,7 +29,7 @@ import { Lead } from '@/lib/types';
 
 export default function Navbar() {
   const router = useRouter();
-  const { currentUser, isDark, toggleDarkMode, logout, openTutorial } = useCRM();
+  const { currentUser, isDark, toggleDarkMode, logout, openTutorial, settings } = useCRM();
   const [isQuickCreateOpen, setIsQuickCreateOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -133,8 +133,12 @@ export default function Navbar() {
             <Link href="/" className="flex items-center gap-3 group">
               <div className="h-9 flex items-center">
                 <img
-                  src={isDark ? '/logo-dark-horizontal.png' : '/logo-light-horizontal.png'}
-                  alt="iFleon Intelligent Frameworks"
+                  src={
+                    isDark
+                      ? settings?.darkLogoUrl || '/logo-dark-horizontal.png'
+                      : settings?.lightLogoUrl || settings?.horizontalLogoUrl || '/logo-light-horizontal.png'
+                  }
+                  alt={settings?.name || 'iFleon Intelligent Frameworks'}
                   className="h-8 md:h-9 w-auto object-contain"
                 />
               </div>

@@ -113,6 +113,8 @@ conn.on('ready', () => {
         'rm -f deploy_site.tar.gz',
         'chmod -R 755 .',
         'chmod -R 777 data',
+        'mkdir -p uploads',
+        'chmod -R 777 uploads',
         'chmod 644 .htaccess',
         'echo "=== DEPLOYMENT COMPLETE ==="',
         'ls -la api',

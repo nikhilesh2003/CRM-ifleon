@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useCRM } from '@/context/CRMContext';
 import { CompanySettings, CRMTheme, AIProviderConfig, StandardScopeModule, PriceListItem } from '@/lib/types';
@@ -19,11 +19,20 @@ import {
   ArrowUp,
   ArrowDown,
   Layers,
+  Upload,
+  Image as ImageIcon,
+  RotateCcw,
+  Check,
+  Search,
+  Bell,
+  Sun,
+  Moon,
+  Loader2,
 } from 'lucide-react';
 
 export default function AdminSettingsWrapper() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-slate-500">Loading Settings...</div>}>
+    <Suspense fallback={<div className="p-8 text-center text-slate-500 font-mono text-xs">Loading Settings...</div>}>
       <AdminSettingsPage />
     </Suspense>
   );
@@ -47,8 +56,10 @@ function AdminSettingsPage() {
     email: 'contact@ifleon.com',
     website: 'https://ifleon.com',
     quotationApprovalThreshold: 100000,
-    horizontalLogoUrl: '/logo-horizontal.svg',
-    iconLogoUrl: '/logo-icon.svg',
+    horizontalLogoUrl: '/logo-light-horizontal.png',
+    lightLogoUrl: '/logo-light-horizontal.png',
+    darkLogoUrl: '/logo-dark-horizontal.png',
+    iconLogoUrl: '/logo-icon.png',
   });
 
   const [themes, setThemes] = useState<CRMTheme[]>([]);
@@ -57,6 +68,14 @@ function AdminSettingsPage() {
   const [scopeModules, setScopeModules] = useState<StandardScopeModule[]>([]);
   const [priceList, setPriceList] = useState<PriceListItem[]>([]);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Logo upload state
+  const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
+  const [uploadSuccessSlot, setUploadSuccessSlot] = useState<string | null>(null);
+
+  const lightFileRef = useRef<HTMLInputElement>(null);
+  const darkFileRef = useRef<HTMLInputElement>(null);
+  const iconFileRef = useRef<HTMLInputElement>(null);
 
   // AI Theme Generator State
   const [themePrompt, setThemePrompt] = useState('clean and professional, deep blue, rounded cards');
@@ -99,6 +118,62 @@ function AdminSettingsPage() {
     );
   }
 
+  // Handle Logo File Upload (reads Data URL and sends to server)
+  const handleLogoUpload = async (file: File, slot: 'light' | 'dark' | 'icon') => {
+    if (!file) return;
+    setUploadingSlot(slot);
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const dataUrl = e.target?.result as string;
+
+        // Immediately update local preview
+        if (slot === 'light') {
+          setSettings((prev) => ({ ...prev, lightLogoUrl: dataUrl, horizontalLogoUrl: dataUrl }));
+        } else if (slot === 'dark') {
+          setSettings((prev) => ({ ...prev, darkLogoUrl: dataUrl }));
+        } else if (slot === 'icon') {
+          setSettings((prev) => ({ ...prev, iconLogoUrl: dataUrl }));
+        }
+
+        // Upload to server endpoint
+        try {
+          const res = await fetch('/api/admin/upload-logo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fileData: dataUrl,
+              fileName: file.name,
+              slot,
+              currentUser,
+            }),
+          });
+          const result = await res.json();
+          if (result.url) {
+            if (slot === 'light') {
+              setSettings((prev) => ({ ...prev, lightLogoUrl: result.url, horizontalLogoUrl: result.url }));
+            } else if (slot === 'dark') {
+              setSettings((prev) => ({ ...prev, darkLogoUrl: result.url }));
+            } else if (slot === 'icon') {
+              setSettings((prev) => ({ ...prev, iconLogoUrl: result.url }));
+            }
+          }
+        } catch (uploadErr) {
+          console.warn('Server storage error, kept local data URI:', uploadErr);
+        }
+
+        setUploadSuccessSlot(slot);
+        setTimeout(() => setUploadSuccessSlot(null), 3000);
+        setUploadingSlot(null);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Error reading file:', err);
+      setUploadingSlot(null);
+    }
+  };
+
   // Handle Save Core Settings
   const handleSaveSettings = async () => {
     try {
@@ -115,7 +190,7 @@ function AdminSettingsPage() {
       if (res.ok) {
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
-        refreshSettings();
+        await refreshSettings();
       }
     } catch (e) {
       console.error(e);
@@ -160,48 +235,36 @@ function AdminSettingsPage() {
         setActiveThemeId(aiGeneratedTheme.id);
         setTheme(aiGeneratedTheme);
         setAiGeneratedTheme(null);
-        alert('AI Theme applied and saved successfully!');
       }
     } catch (e) {
       console.error(e);
     }
   };
 
-  // Reorder Provider Priority
-  const handleMoveProvider = (index: number, direction: 'up' | 'down') => {
-    const list = [...aiProviders];
-    const targetIdx = direction === 'up' ? index - 1 : index + 1;
-    if (targetIdx < 0 || targetIdx >= list.length) return;
-
-    const temp = list[index];
-    list[index] = list[targetIdx];
-    list[targetIdx] = temp;
-
-    // Reassign priorities 1, 2, 3...
-    list.forEach((p, idx) => {
-      p.priority = idx + 1;
-    });
-
-    setAiProviders(list);
+  // Select Preset Theme
+  const handleSelectTheme = (themeId: string) => {
+    setActiveThemeId(themeId);
+    const found = themes.find((t) => t.id === themeId);
+    if (found) setTheme(found);
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
-      {/* Header */}
+    <div className="space-y-6 max-w-7xl mx-auto pb-16">
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Settings className="w-5 h-5 text-blue-600" />
-            <span>System Settings & Configuration Panel</span>
+            <span>Enterprise System Settings</span>
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Configure company branding, theme appearance, AI fallback chain, and scope master lists
+            Manage company profile, brand logos, AI providers, and commercial master lists
           </p>
         </div>
 
         <button
           onClick={handleSaveSettings}
-          className="px-3.5 py-2 rounded-md bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs flex items-center gap-1.5 shadow-xs transition"
+          className="px-4 py-2 rounded-lg bg-blue-700 hover:bg-blue-600 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer"
         >
           <Save className="w-4 h-4" />
           <span>Save Changes</span>
@@ -209,16 +272,16 @@ function AdminSettingsPage() {
       </div>
 
       {saveSuccess && (
-        <div className="p-3 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2">
-          <CheckCircle className="w-4 h-4" />
-          <span>Settings successfully updated and saved!</span>
+        <div className="p-3.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs flex items-center gap-2">
+          <CheckCircle className="w-4 h-4 text-emerald-600" />
+          <span className="font-medium">System settings and brand logos successfully saved across the platform!</span>
         </div>
       )}
 
-      {/* Settings Navigation Tabs */}
-      <div className="flex flex-wrap gap-1.5 border-b border-slate-200 dark:border-slate-800 pb-2">
+      {/* Navigation Tabs */}
+      <div className="flex flex-wrap gap-1.5 border-b border-slate-200 dark:border-[#1E2A3E] pb-2">
         {[
-          { id: 'company', label: 'Company Profile & Branding', icon: Building2 },
+          { id: 'company', label: 'Company Profile & Brand Logos', icon: Building2 },
           { id: 'theme', label: 'Appearance & Theme Studio', icon: Palette },
           { id: 'ai', label: 'AI Fallback Chain & Keys', icon: Cpu },
           { id: 'scope', label: 'Standard Scope Master List', icon: Layers },
@@ -230,10 +293,10 @@ function AdminSettingsPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-2 transition ${
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-2 transition cursor-pointer ${
                 isActive
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  ? 'bg-blue-700 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#172132]'
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -243,106 +306,558 @@ function AdminSettingsPage() {
         })}
       </div>
 
-      {/* TAB 1: Company Profile & Branding */}
+      {/* TAB 1: Company Profile & Brand Logos */}
       {activeTab === 'company' && (
-        <div className="crm-card p-5 space-y-5">
-          <div className="crm-card-header pb-3">
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-              Company Identity & Quotation Approval Threshold
-            </h2>
+        <div className="space-y-6">
+          {/* BRAND LOGOS MANAGEMENT CARD */}
+          <div className="crm-card p-5 space-y-5 bg-white dark:bg-[#111925] border border-slate-200 dark:border-[#1E2A3E] rounded-xl shadow-xs">
+            <div className="border-b border-slate-100 dark:border-[#1E2A3E] pb-3 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-blue-600" />
+                  <span>Corporate Brand Assets & Logo Studio</span>
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Upload, preview, and configure high-resolution logos for light mode, dark mode, and browser icons
+                </p>
+              </div>
+            </div>
+
+            {/* Three Logo Cards Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              {/* Slot 1: Light Mode Horizontal Logo */}
+              <div className="p-4 rounded-xl border border-slate-200 dark:border-[#1E2A3E] bg-slate-50/50 dark:bg-[#172132]/30 flex flex-col justify-between space-y-3.5">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      Horizontal Logo (Light Mode)
+                    </span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold">
+                      Light Surface
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mb-3">
+                    Used on light mode navbar, quotation printouts, and client proposals.
+                  </p>
+
+                  {/* Visual Preview on White Canvas */}
+                  <div className="w-full h-24 rounded-lg bg-white border border-slate-200 flex items-center justify-center p-3 shadow-inner relative overflow-hidden group">
+                    <img
+                      src={settings.lightLogoUrl || settings.horizontalLogoUrl || '/logo-light-horizontal.png'}
+                      alt="Light Logo Preview"
+                      className="max-h-16 max-w-full object-contain"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-slate-200/60 dark:border-[#1E2A3E]">
+                  {/* Upload File Button */}
+                  <input
+                    type="file"
+                    ref={lightFileRef}
+                    accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) handleLogoUpload(e.target.files[0], 'light');
+                    }}
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={uploadingSlot === 'light'}
+                      onClick={() => lightFileRef.current?.click()}
+                      className="flex-1 py-1.5 px-3 rounded-md bg-blue-600 hover:bg-blue-500 disabled:bg-blue-400 text-white font-medium text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                    >
+                      {uploadingSlot === 'light' ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Uploading...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Upload Image</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSettings((prev) => ({
+                          ...prev,
+                          lightLogoUrl: '/logo-light-horizontal.png',
+                          horizontalLogoUrl: '/logo-light-horizontal.png',
+                        }))
+                      }
+                      className="p-1.5 rounded-md border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                      title="Reset to default transparent logo"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {uploadSuccessSlot === 'light' && (
+                    <div className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Light logo updated!</span>
+                    </div>
+                  )}
+
+                  {/* Direct Path Input */}
+                  <div>
+                    <label className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block mb-1">
+                      Or image URL / path:
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.lightLogoUrl || settings.horizontalLogoUrl || ''}
+                      onChange={(e) =>
+                        setSettings((prev) => ({
+                          ...prev,
+                          lightLogoUrl: e.target.value,
+                          horizontalLogoUrl: e.target.value,
+                        }))
+                      }
+                      className="w-full px-2.5 py-1 text-xs rounded border border-slate-200 dark:border-[#1E2A3E] bg-white dark:bg-[#111925] text-slate-800 dark:text-slate-200 font-mono"
+                    />
+                  </div>
+
+                  {/* Quick Presets */}
+                  <div>
+                    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block mb-1">
+                      Quick Presets:
+                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {[
+                        { label: 'Transparent Light', url: '/logo-light-horizontal.png' },
+                        { label: 'Solid Light', url: '/logo-light-horizontal-solid.png' },
+                        { label: 'Standard Horizontal', url: '/logo-horizontal.png' },
+                      ].map((p) => (
+                        <button
+                          key={p.url}
+                          type="button"
+                          onClick={() =>
+                            setSettings((prev) => ({
+                              ...prev,
+                              lightLogoUrl: p.url,
+                              horizontalLogoUrl: p.url,
+                            }))
+                          }
+                          className="px-2 py-0.5 rounded text-[10px] font-mono bg-white dark:bg-[#111925] border border-slate-200 dark:border-[#1E2A3E] hover:border-blue-500 text-slate-700 dark:text-slate-300 transition"
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Slot 2: Dark Mode Horizontal Logo */}
+              <div className="p-4 rounded-xl border border-slate-200 dark:border-[#1E2A3E] bg-slate-50/50 dark:bg-[#172132]/30 flex flex-col justify-between space-y-3.5">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      Horizontal Logo (Dark Mode)
+                    </span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 font-semibold">
+                      Dark Surface
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mb-3">
+                    Used on dark mode navbar, dark executive login, and reports.
+                  </p>
+
+                  {/* Visual Preview on Dark Canvas */}
+                  <div className="w-full h-24 rounded-lg bg-[#111925] border border-[#1E2A3E] flex items-center justify-center p-3 shadow-inner relative overflow-hidden group">
+                    <img
+                      src={settings.darkLogoUrl || '/logo-dark-horizontal.png'}
+                      alt="Dark Logo Preview"
+                      className="max-h-16 max-w-full object-contain"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-slate-200/60 dark:border-[#1E2A3E]">
+                  {/* Upload File Button */}
+                  <input
+                    type="file"
+                    ref={darkFileRef}
+                    accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) handleLogoUpload(e.target.files[0], 'dark');
+                    }}
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={uploadingSlot === 'dark'}
+                      onClick={() => darkFileRef.current?.click()}
+                      className="flex-1 py-1.5 px-3 rounded-md bg-blue-600 hover:bg-blue-500 disabled:bg-blue-400 text-white font-medium text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                    >
+                      {uploadingSlot === 'dark' ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Uploading...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Upload Image</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSettings((prev) => ({
+                          ...prev,
+                          darkLogoUrl: '/logo-dark-horizontal.png',
+                        }))
+                      }
+                      className="p-1.5 rounded-md border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                      title="Reset to default transparent dark logo"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {uploadSuccessSlot === 'dark' && (
+                    <div className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Dark logo updated!</span>
+                    </div>
+                  )}
+
+                  {/* Direct Path Input */}
+                  <div>
+                    <label className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block mb-1">
+                      Or image URL / path:
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.darkLogoUrl || ''}
+                      onChange={(e) =>
+                        setSettings((prev) => ({
+                          ...prev,
+                          darkLogoUrl: e.target.value,
+                        }))
+                      }
+                      className="w-full px-2.5 py-1 text-xs rounded border border-slate-200 dark:border-[#1E2A3E] bg-white dark:bg-[#111925] text-slate-800 dark:text-slate-200 font-mono"
+                    />
+                  </div>
+
+                  {/* Quick Presets */}
+                  <div>
+                    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block mb-1">
+                      Quick Presets:
+                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {[
+                        { label: 'Transparent Dark', url: '/logo-dark-horizontal.png' },
+                        { label: 'Solid Dark', url: '/logo-dark-horizontal-solid.png' },
+                      ].map((p) => (
+                        <button
+                          key={p.url}
+                          type="button"
+                          onClick={() =>
+                            setSettings((prev) => ({
+                              ...prev,
+                              darkLogoUrl: p.url,
+                            }))
+                          }
+                          className="px-2 py-0.5 rounded text-[10px] font-mono bg-white dark:bg-[#111925] border border-slate-200 dark:border-[#1E2A3E] hover:border-blue-500 text-slate-700 dark:text-slate-300 transition"
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Slot 3: Brand Icon / Favicon */}
+              <div className="p-4 rounded-xl border border-slate-200 dark:border-[#1E2A3E] bg-slate-50/50 dark:bg-[#172132]/30 flex flex-col justify-between space-y-3.5">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      Brand Icon / Favicon
+                    </span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 font-semibold">
+                      1:1 Square
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mb-3">
+                    Used for mobile app icon, browser favicon, and square badges.
+                  </p>
+
+                  {/* Visual Preview in Square Container */}
+                  <div className="w-full h-24 rounded-lg bg-slate-100 dark:bg-[#111925] border border-slate-200 dark:border-[#1E2A3E] flex items-center justify-center p-3 shadow-inner relative overflow-hidden group">
+                    <img
+                      src={settings.iconLogoUrl || '/logo-icon.png'}
+                      alt="Icon Logo Preview"
+                      className="w-14 h-14 object-contain rounded"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-slate-200/60 dark:border-[#1E2A3E]">
+                  {/* Upload File Button */}
+                  <input
+                    type="file"
+                    ref={iconFileRef}
+                    accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) handleLogoUpload(e.target.files[0], 'icon');
+                    }}
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={uploadingSlot === 'icon'}
+                      onClick={() => iconFileRef.current?.click()}
+                      className="flex-1 py-1.5 px-3 rounded-md bg-blue-600 hover:bg-blue-500 disabled:bg-blue-400 text-white font-medium text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                    >
+                      {uploadingSlot === 'icon' ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Uploading...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Upload Image</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSettings((prev) => ({
+                          ...prev,
+                          iconLogoUrl: '/logo-icon.png',
+                        }))
+                      }
+                      className="p-1.5 rounded-md border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                      title="Reset to default icon"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {uploadSuccessSlot === 'icon' && (
+                    <div className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Icon logo updated!</span>
+                    </div>
+                  )}
+
+                  {/* Direct Path Input */}
+                  <div>
+                    <label className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block mb-1">
+                      Or image URL / path:
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.iconLogoUrl || ''}
+                      onChange={(e) =>
+                        setSettings((prev) => ({
+                          ...prev,
+                          iconLogoUrl: e.target.value,
+                        }))
+                      }
+                      className="w-full px-2.5 py-1 text-xs rounded border border-slate-200 dark:border-[#1E2A3E] bg-white dark:bg-[#111925] text-slate-800 dark:text-slate-200 font-mono"
+                    />
+                  </div>
+
+                  {/* Quick Presets */}
+                  <div>
+                    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block mb-1">
+                      Quick Presets:
+                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {[
+                        { label: 'Square Icon', url: '/logo-icon.png' },
+                        { label: 'Dark Icon', url: '/logo-dark-icon.png' },
+                        { label: 'Light Icon', url: '/logo-light-icon.png' },
+                      ].map((p) => (
+                        <button
+                          key={p.url}
+                          type="button"
+                          onClick={() =>
+                            setSettings((prev) => ({
+                              ...prev,
+                              iconLogoUrl: p.url,
+                            }))
+                          }
+                          className="px-2 py-0.5 rounded text-[10px] font-mono bg-white dark:bg-[#111925] border border-slate-200 dark:border-[#1E2A3E] hover:border-blue-500 text-slate-700 dark:text-slate-300 transition"
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* LIVE HEADER SIMULATION PREVIEW */}
+            <div className="mt-4 p-4 rounded-xl border border-slate-200 dark:border-[#1E2A3E] bg-slate-100/60 dark:bg-[#0B0F19] space-y-3">
+              <span className="text-[11px] font-mono uppercase font-bold text-slate-500 block">
+                Live Navbar Simulation (Light Mode vs. Dark Mode):
+              </span>
+
+              {/* Light Navbar Simulated */}
+              <div className="rounded-lg border border-slate-200 bg-white p-3 flex items-center justify-between shadow-xs">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={settings.lightLogoUrl || settings.horizontalLogoUrl || '/logo-light-horizontal.png'}
+                    alt="Simulated Light Logo"
+                    className="h-7 w-auto object-contain"
+                  />
+                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                    CRM
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="px-3 py-1 rounded text-[11px] bg-slate-50 border border-slate-200 text-slate-400 flex items-center gap-1.5 hidden sm:flex">
+                    <Search className="w-3 h-3" />
+                    <span>Search leads...</span>
+                  </div>
+                  <div className="p-1 rounded bg-slate-100 text-slate-500">
+                    <Sun className="w-3.5 h-3.5" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Dark Navbar Simulated */}
+              <div className="rounded-lg border border-[#1E2A3E] bg-[#111925] p-3 flex items-center justify-between shadow-xs">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={settings.darkLogoUrl || '/logo-dark-horizontal.png'}
+                    alt="Simulated Dark Logo"
+                    className="h-7 w-auto object-contain"
+                  />
+                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-[#172132] text-slate-300 border border-[#1E2A3E]">
+                    CRM
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="px-3 py-1 rounded text-[11px] bg-[#172132] border border-[#1E2A3E] text-slate-400 flex items-center gap-1.5 hidden sm:flex">
+                    <Search className="w-3 h-3" />
+                    <span>Search leads...</span>
+                  </div>
+                  <div className="p-1 rounded bg-[#172132] text-slate-400">
+                    <Moon className="w-3.5 h-3.5" />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
-            <div>
-              <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Company Name
-              </label>
-              <input
-                type="text"
-                value={settings.name}
-                onChange={(e) => setSettings({ ...settings, name: e.target.value })}
-                className="w-full px-3 py-1.5 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-              />
+          {/* COMPANY PROFILE & THRESHOLD CARD */}
+          <div className="crm-card p-5 space-y-5 bg-white dark:bg-[#111925] border border-slate-200 dark:border-[#1E2A3E] rounded-xl shadow-xs">
+            <div className="border-b border-slate-100 dark:border-[#1E2A3E] pb-3">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-blue-600" />
+                <span>Company Legal Profile & Commercial Rules</span>
+              </h2>
             </div>
 
-            <div>
-              <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Official Tagline
-              </label>
-              <input
-                type="text"
-                value={settings.tagline}
-                onChange={(e) => setSettings({ ...settings, tagline: e.target.value })}
-                className="w-full px-3 py-1.5 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-              />
-            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+              <div>
+                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Company Name
+                </label>
+                <input
+                  type="text"
+                  value={settings.name}
+                  onChange={(e) => setSettings({ ...settings, name: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-white dark:bg-[#172132] border border-slate-200 dark:border-[#1E2A3E] text-slate-900 dark:text-white"
+                />
+              </div>
 
-            <div>
-              <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Official Email
-              </label>
-              <input
-                type="email"
-                value={settings.email}
-                onChange={(e) => setSettings({ ...settings, email: e.target.value })}
-                className="w-full px-3 py-1.5 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-              />
-            </div>
+              <div>
+                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Official Tagline
+                </label>
+                <input
+                  type="text"
+                  value={settings.tagline}
+                  onChange={(e) => setSettings({ ...settings, tagline: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-white dark:bg-[#172132] border border-slate-200 dark:border-[#1E2A3E] text-slate-900 dark:text-white"
+                />
+              </div>
 
-            <div>
-              <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Official Phone
-              </label>
-              <input
-                type="tel"
-                value={settings.phone}
-                onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
-                className="w-full px-3 py-1.5 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono tabular-nums"
-              />
-            </div>
+              <div>
+                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Official Email
+                </label>
+                <input
+                  type="email"
+                  value={settings.email}
+                  onChange={(e) => setSettings({ ...settings, email: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-white dark:bg-[#172132] border border-slate-200 dark:border-[#1E2A3E] text-slate-900 dark:text-white"
+                />
+              </div>
 
-            <div>
-              <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Website URL
-              </label>
-              <input
-                type="text"
-                value={settings.website}
-                onChange={(e) => setSettings({ ...settings, website: e.target.value })}
-                className="w-full px-3 py-1.5 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-              />
-            </div>
+              <div>
+                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Official Phone
+                </label>
+                <input
+                  type="tel"
+                  value={settings.phone}
+                  onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-white dark:bg-[#172132] border border-slate-200 dark:border-[#1E2A3E] text-slate-900 dark:text-white font-mono tabular-nums"
+                />
+              </div>
 
-            <div>
-              <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Quotation Approval Threshold (₹)
-              </label>
-              <input
-                type="number"
-                value={settings.quotationApprovalThreshold}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    quotationApprovalThreshold: Number(e.target.value),
-                  })
-                }
-                className="w-full px-3 py-1.5 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono tabular-nums"
-              />
-              <span className="text-[10px] text-slate-400 block mt-0.5">
-                Quotations totaling this amount or higher require Manager sign-off before being marked Sent.
-              </span>
-            </div>
+              <div>
+                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Website URL
+                </label>
+                <input
+                  type="text"
+                  value={settings.website}
+                  onChange={(e) => setSettings({ ...settings, website: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-white dark:bg-[#172132] border border-slate-200 dark:border-[#1E2A3E] text-slate-900 dark:text-white"
+                />
+              </div>
 
-            <div className="sm:col-span-2">
-              <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Office Address (City & State)
-              </label>
-              <input
-                type="text"
-                value={settings.cityState}
-                onChange={(e) => setSettings({ ...settings, cityState: e.target.value })}
-                className="w-full px-3 py-1.5 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-              />
+              <div>
+                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Quotation Approval Threshold (₹)
+                </label>
+                <input
+                  type="number"
+                  value={settings.quotationApprovalThreshold}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      quotationApprovalThreshold: Number(e.target.value),
+                    })
+                  }
+                  className="w-full px-3 py-2 rounded-lg bg-white dark:bg-[#172132] border border-slate-200 dark:border-[#1E2A3E] text-slate-900 dark:text-white font-mono tabular-nums"
+                />
+                <span className="text-[10px] text-slate-400 block mt-0.5">
+                  Quotations totaling this amount or higher require Manager sign-off before being marked Sent.
+                </span>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Office Address (City & State)
+                </label>
+                <input
+                  type="text"
+                  value={settings.cityState}
+                  onChange={(e) => setSettings({ ...settings, cityState: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-white dark:bg-[#172132] border border-slate-200 dark:border-[#1E2A3E] text-slate-900 dark:text-white"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -351,8 +866,7 @@ function AdminSettingsPage() {
       {/* TAB 2: Appearance & Theme Studio */}
       {activeTab === 'theme' && (
         <div className="space-y-4">
-          {/* Automated Theme Studio */}
-          <div className="crm-card p-5 space-y-3.5 bg-slate-50 dark:bg-slate-900/60">
+          <div className="crm-card p-5 space-y-3.5 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-[#1E2A3E] rounded-xl">
             <div className="crm-card-header pb-2 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-blue-600" />
@@ -368,93 +882,94 @@ function AdminSettingsPage() {
             <div className="flex flex-col sm:flex-row gap-2 pt-1">
               <input
                 type="text"
-                placeholder="Describe palette style..."
                 value={themePrompt}
                 onChange={(e) => setThemePrompt(e.target.value)}
-                className="flex-1 px-3 py-1.5 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs"
+                placeholder="Describe look and feel..."
+                className="flex-1 px-3 py-2 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white"
               />
               <button
                 onClick={handleGenerateAITheme}
                 disabled={aiGenerating}
-                className="px-4 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs flex items-center justify-center gap-1.5 shadow-xs transition disabled:opacity-50"
+                className="px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-medium text-xs flex items-center justify-center gap-1.5 transition"
               >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>{aiGenerating ? 'Generating Schema...' : 'Generate Theme'}</span>
+                {aiGenerating ? (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5 animate-spin" />
+                    <span>Designing Theme...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Generate AI Theme</span>
+                  </>
+                )}
               </button>
             </div>
 
-            {/* Generated Theme Live Preview */}
             {aiGeneratedTheme && (
-              <div className="p-3.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-3 pt-3">
+              <div className="p-4 rounded-md border border-blue-200 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/20 space-y-3 mt-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    <CheckCircle className="w-4 h-4 text-emerald-600" />
-                    Contrast Verified & Schema Validated
+                  <span className="text-xs font-semibold text-blue-900 dark:text-blue-200">
+                    AI Suggested Theme: {aiGeneratedTheme.name}
                   </span>
                   <button
                     onClick={handleApplyAITheme}
-                    className="px-3 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs shadow-xs"
+                    className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition"
                   >
-                    Save & Apply Theme
+                    Apply Theme
                   </button>
                 </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                  <div className="p-2 rounded-md border border-slate-200 dark:border-slate-700" style={{ backgroundColor: aiGeneratedTheme.primaryColor }}>
-                    <span className="font-bold text-white block">Primary</span>
-                    <span className="text-[10px] text-white/80 font-mono tabular-nums">{aiGeneratedTheme.primaryColor}</span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded" style={{ backgroundColor: aiGeneratedTheme.primaryColor }} />
+                    <span className="font-mono">{aiGeneratedTheme.primaryColor}</span>
                   </div>
-                  <div className="p-2 rounded-md border border-slate-200 dark:border-slate-700" style={{ backgroundColor: aiGeneratedTheme.cardBackground }}>
-                    <span className="font-bold text-slate-900 dark:text-slate-100 block">Card BG</span>
-                    <span className="text-[10px] text-slate-500 font-mono tabular-nums">{aiGeneratedTheme.cardBackground}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded" style={{ backgroundColor: aiGeneratedTheme.secondaryColor }} />
+                    <span className="font-mono">{aiGeneratedTheme.secondaryColor}</span>
                   </div>
-                  <div className="p-2 rounded-md border border-slate-200 dark:border-slate-700" style={{ backgroundColor: aiGeneratedTheme.secondaryColor }}>
-                    <span className="font-bold text-white block">Secondary</span>
-                    <span className="text-[10px] text-white/80 font-mono tabular-nums">{aiGeneratedTheme.secondaryColor}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded" style={{ backgroundColor: aiGeneratedTheme.cardBackground }} />
+                    <span className="font-mono">Card: {aiGeneratedTheme.cardBackground}</span>
                   </div>
-                  <div className="p-2 rounded-md border border-slate-200 dark:border-slate-700" style={{ backgroundColor: aiGeneratedTheme.accentColor }}>
-                    <span className="font-bold text-slate-900 block">Accent</span>
-                    <span className="text-[10px] text-slate-900 font-mono tabular-nums">{aiGeneratedTheme.accentColor}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded" style={{ backgroundColor: aiGeneratedTheme.backgroundColor }} />
+                    <span className="font-mono">BG: {aiGeneratedTheme.backgroundColor}</span>
                   </div>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Theme Picker */}
-          <div className="crm-card p-5 space-y-4">
-            <div className="crm-card-header pb-2">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                Available Enterprise Themes
-              </h3>
-            </div>
-
+          <div className="crm-card p-5 space-y-4 border border-slate-200 dark:border-[#1E2A3E] rounded-xl bg-white dark:bg-[#111925]">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Active Enterprise Themes
+            </h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {themes.map((t) => {
                 const isActive = activeThemeId === t.id;
                 return (
                   <div
                     key={t.id}
-                    onClick={() => {
-                      setActiveThemeId(t.id);
-                      setTheme(t);
-                    }}
-                    className={`p-3.5 rounded-md border cursor-pointer transition text-xs space-y-2 ${
+                    onClick={() => handleSelectTheme(t.id)}
+                    className={`p-3.5 rounded-lg border cursor-pointer transition flex flex-col justify-between ${
                       isActive
-                        ? 'border-blue-600 bg-blue-50/70 dark:bg-blue-950/40 ring-1 ring-blue-600/30'
-                        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300'
+                        ? 'border-blue-600 bg-blue-50/20 dark:bg-blue-950/20 ring-1 ring-blue-600'
+                        : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900'
                     }`}
                   >
-                    <div className="flex items-center justify-between font-bold">
-                      <span className="text-slate-900 dark:text-white">{t.name}</span>
-                      {isActive && <CheckCircle className="w-4 h-4 text-blue-600" />}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold text-xs text-slate-900 dark:text-white">{t.name}</span>
+                        {isActive && <CheckCircle className="w-4 h-4 text-blue-600" />}
+                      </div>
+                      <div className="flex gap-1.5 mb-3">
+                        <div className="w-5 h-5 rounded" style={{ backgroundColor: t.primaryColor }} title="Primary" />
+                        <div className="w-5 h-5 rounded" style={{ backgroundColor: t.secondaryColor }} title="Secondary" />
+                        <div className="w-5 h-5 rounded" style={{ backgroundColor: t.cardBackground }} title="Card BG" />
+                      </div>
                     </div>
-                    <div className="flex gap-1.5 pt-1">
-                      <span className="w-4 h-4 rounded-sm border border-slate-300" style={{ backgroundColor: t.primaryColor }}></span>
-                      <span className="w-4 h-4 rounded-sm border border-slate-300" style={{ backgroundColor: t.secondaryColor }}></span>
-                      <span className="w-4 h-4 rounded-sm border border-slate-300" style={{ backgroundColor: t.accentColor }}></span>
-                      <span className="w-4 h-4 rounded-sm border border-slate-300" style={{ backgroundColor: t.cardBackground }}></span>
-                    </div>
+                    <span className="text-[10px] font-mono text-slate-400">{t.isDark ? 'Dark Mode' : 'Light Mode'}</span>
                   </div>
                 );
               })}
@@ -463,81 +978,90 @@ function AdminSettingsPage() {
         </div>
       )}
 
-      {/* TAB 3: AI Provider Layer */}
+      {/* TAB 3: AI Fallback Chain & Keys */}
       {activeTab === 'ai' && (
-        <div className="crm-card p-5 space-y-5">
-          <div className="crm-card-header pb-3">
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Cpu className="w-4 h-4 text-blue-600" />
-              <span>Provider-Agnostic AI Layer & Automatic Fallback Chain</span>
-            </h2>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-              Multi-provider redundancy. When a provider encounters rate limits or downtime, the system automatically falls back to the next tier in order.
-            </p>
+        <div className="crm-card p-5 space-y-4 border border-slate-200 dark:border-[#1E2A3E] rounded-xl bg-white dark:bg-[#111925]">
+          <div className="crm-card-header pb-2 flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                Multi-Provider AI Fallback Pipeline
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Configure Groq, Google Gemini, OpenRouter, and local Ollama. Higher priority providers are queried first.
+              </p>
+            </div>
           </div>
 
-          <div className="space-y-2.5">
-            {aiProviders.map((provider, index) => (
+          <div className="space-y-3">
+            {aiProviders.map((prov, idx) => (
               <div
-                key={provider.id}
-                className="p-3.5 rounded-md bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                key={prov.id}
+                className="p-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-3 text-xs"
               >
-                <div className="space-y-1">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded bg-blue-600 text-white font-mono font-bold text-[10px] flex items-center justify-center tabular-nums">
-                      {provider.priority}
+                    <span className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono text-[10px] flex items-center justify-center font-bold">
+                      {idx + 1}
                     </span>
-                    <strong className="text-sm text-slate-900 dark:text-white">
-                      {provider.name}
-                    </strong>
-                    <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                        provider.enabled
-                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                          : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                      }`}
-                    >
-                      {provider.enabled ? 'Active' : 'Disabled'}
-                    </span>
+                    <span className="font-semibold text-slate-900 dark:text-white">{prov.name}</span>
                   </div>
-                  <p className="text-[11px] text-slate-500 font-mono">
-                    Model: {provider.model} • URL: {provider.baseUrl}
-                  </p>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={prov.enabled}
+                      onChange={(e) => {
+                        const next = [...aiProviders];
+                        next[idx].enabled = e.target.checked;
+                        setAiProviders(next);
+                      }}
+                      className="rounded text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-[11px] text-slate-500">Enabled</span>
+                  </label>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] text-slate-500 mb-0.5">Base URL</label>
+                    <input
+                      type="text"
+                      value={prov.baseUrl}
+                      onChange={(e) => {
+                        const next = [...aiProviders];
+                        next[idx].baseUrl = e.target.value;
+                        setAiProviders(next);
+                      }}
+                      className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono text-[11px]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-slate-500 mb-0.5">Model Name</label>
+                    <input
+                      type="text"
+                      value={prov.model}
+                      onChange={(e) => {
+                        const next = [...aiProviders];
+                        next[idx].model = e.target.value;
+                        setAiProviders(next);
+                      }}
+                      className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono text-[11px]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-slate-500 mb-0.5">API Key (Stored in encrypted storage)</label>
                   <input
                     type="password"
-                    placeholder={provider.hasKey ? '••••••••••••' : 'Enter API Key...'}
+                    placeholder={prov.hasKey ? '•••••••••••••••• (Configured)' : 'Enter API Key...'}
+                    value={prov.apiKey}
                     onChange={(e) => {
-                      const updated = [...aiProviders];
-                      updated[index].apiKey = e.target.value;
-                      setAiProviders(updated);
+                      const next = [...aiProviders];
+                      next[idx].apiKey = e.target.value;
+                      setAiProviders(next);
                     }}
-                    className="w-40 px-2.5 py-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono text-xs"
+                    className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono text-[11px]"
                   />
-
-                  {/* Priority order controls */}
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      disabled={index === 0}
-                      onClick={() => handleMoveProvider(index, 'up')}
-                      className="p-1.5 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30"
-                      title="Move Priority Up"
-                    >
-                      <ArrowUp className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      disabled={index === aiProviders.length - 1}
-                      onClick={() => handleMoveProvider(index, 'down')}
-                      className="p-1.5 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30"
-                      title="Move Priority Down"
-                    >
-                      <ArrowDown className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
                 </div>
               </div>
             ))}
@@ -547,29 +1071,38 @@ function AdminSettingsPage() {
 
       {/* TAB 4: Standard Scope Master List */}
       {activeTab === 'scope' && (
-        <div className="crm-card p-5 space-y-4">
-          <div className="crm-card-header pb-3">
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-              Standard Scope Master Catalog (Pre-Owned Car Dealership Modules)
-            </h2>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-              Master catalog of functional modules referenced in quotations and formal proposals
-            </p>
+        <div className="crm-card p-5 space-y-4 border border-slate-200 dark:border-[#1E2A3E] rounded-xl bg-white dark:bg-[#111925]">
+          <div className="crm-card-header pb-2 flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                Pre-Owned Car Dealership Scope Master Modules
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Standard components available for inclusion in 16:9 quotation slides and client contracts.
+              </p>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-            {scopeModules.map((mod) => (
+          <div className="space-y-2">
+            {scopeModules.map((m) => (
               <div
-                key={mod.id}
-                className="p-3.5 rounded-md bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-1"
+                key={m.id}
+                className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-start justify-between gap-4 text-xs"
               >
-                <div className="flex items-center justify-between font-bold">
-                  <span className="text-slate-900 dark:text-white">{mod.name}</span>
-                  <span className="text-[11px] text-blue-600 font-mono tabular-nums">₹{mod.defaultPrice.toLocaleString()}</span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-900 dark:text-white">{m.name}</span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                      {m.category}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                    {m.description}
+                  </p>
                 </div>
-                <p className="text-slate-500 leading-relaxed text-[11px]">
-                  {mod.description}
-                </p>
+                <div className="font-mono font-bold text-slate-900 dark:text-white flex-shrink-0">
+                  ₹{m.defaultPrice.toLocaleString('en-IN')}
+                </div>
               </div>
             ))}
           </div>
@@ -578,28 +1111,41 @@ function AdminSettingsPage() {
 
       {/* TAB 5: Commercial Price List */}
       {activeTab === 'price' && (
-        <div className="crm-card p-5 space-y-4">
-          <div className="crm-card-header pb-3">
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-              Commercial Price List Master
-            </h2>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-              Standard deliverable items, baseline rates, and packaging selectable in quotation generator
-            </p>
+        <div className="crm-card p-5 space-y-4 border border-slate-200 dark:border-[#1E2A3E] rounded-xl bg-white dark:bg-[#111925]">
+          <div className="crm-card-header pb-2 flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                Commercial Rate Card & Itemized Pricing
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Default rates, billing frequencies, and line item descriptions for automobile digital solutions.
+              </p>
+            </div>
           </div>
 
-          <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-            {priceList.map((item) => (
-              <div key={item.id} className="py-2.5 flex items-center justify-between gap-4">
-                <div>
-                  <strong className="text-slate-900 dark:text-white block font-medium">{item.name}</strong>
-                  <span className="text-[11px] text-slate-500">{item.description}</span>
-                </div>
-                <div className="text-right whitespace-nowrap font-mono font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                  ₹{item.rate.toLocaleString()} / {item.unit}
-                </div>
-              </div>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-100 dark:bg-slate-800 text-slate-500 uppercase font-mono text-[10px]">
+                <tr>
+                  <th className="p-2.5">Item Name</th>
+                  <th className="p-2.5">Category</th>
+                  <th className="p-2.5">Unit / Period</th>
+                  <th className="p-2.5 text-right">Standard Rate (₹)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {priceList.map((pl) => (
+                  <tr key={pl.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
+                    <td className="p-2.5 font-medium text-slate-900 dark:text-white">{pl.name}</td>
+                    <td className="p-2.5 text-slate-500">{pl.category}</td>
+                    <td className="p-2.5 text-slate-500 capitalize">{pl.unit}</td>
+                    <td className="p-2.5 text-right font-mono font-semibold text-slate-900 dark:text-white">
+                      ₹{pl.rate.toLocaleString('en-IN')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

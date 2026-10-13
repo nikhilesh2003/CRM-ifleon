@@ -503,7 +503,50 @@ if ($resource === 'admin' && $param1 === 'users') {
     }
 }
 
-// 8. /api/admin/settings
+// 8. /api/admin/upload-logo
+if ($resource === 'admin' && $param1 === 'upload-logo') {
+    if ($method === 'POST') {
+        $input = get_input();
+        $fileData = $input['fileData'] ?? '';
+        $slot = preg_replace('/[^a-zA-Z0-9_-]/', '', $input['slot'] ?? 'logo');
+        $fileName = preg_replace('/[^a-zA-Z0-9_.-]/', '', $input['fileName'] ?? 'logo.png');
+        $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION)) ?: 'png';
+
+        if (!empty($fileData)) {
+            if (preg_match('/^data:image\/([a-zA-Z0-9-+.]+);base64,/', $fileData, $type)) {
+                $fileData = substr($fileData, strpos($fileData, ',') + 1);
+                $ext = strtolower($type[1]);
+                if ($ext === 'jpeg') $ext = 'jpg';
+            }
+            $data = base64_decode($fileData);
+            if ($data !== false) {
+                $uploadDir = __DIR__ . '/../uploads';
+                if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+                $destName = 'logo-' . $slot . '-' . time() . '.' . $ext;
+                file_put_contents($uploadDir . '/' . $destName, $data);
+                $url = '/uploads/' . $destName;
+
+                if ($slot === 'light') {
+                    $db['settings']['lightLogoUrl'] = $url;
+                    $db['settings']['horizontalLogoUrl'] = $url;
+                } elseif ($slot === 'dark') {
+                    $db['settings']['darkLogoUrl'] = $url;
+                } elseif ($slot === 'icon') {
+                    $db['settings']['iconLogoUrl'] = $url;
+                }
+                save_db($db);
+
+                echo json_encode(['success' => true, 'url' => $url, 'settings' => $db['settings']]);
+                exit;
+            }
+        }
+        http_response_code(400);
+        echo json_encode(['error' => 'Invalid image data.']);
+        exit;
+    }
+}
+
+// 8.1 /api/admin/settings
 if ($resource === 'admin' && $param1 === 'settings') {
     if ($method === 'GET') {
         echo json_encode([

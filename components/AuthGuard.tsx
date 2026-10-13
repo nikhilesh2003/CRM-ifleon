@@ -8,7 +8,7 @@ import { ShieldCheck, Loader2 } from 'lucide-react';
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { currentUser, isLoadingAuth, isDark } = useCRM();
+  const { currentUser, isLoadingAuth, isDark, settings } = useCRM();
 
   const isPublicRoute = pathname === '/login' || pathname === '/register';
 
@@ -31,8 +31,12 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         <div className="flex flex-col items-center space-y-4">
           <div className="h-10 flex items-center">
             <img
-              src={isDark ? '/logo-dark-horizontal.png' : '/logo-light-horizontal.png'}
-              alt="iFleon Intelligent Frameworks"
+              src={
+                isDark
+                  ? settings?.darkLogoUrl || '/logo-dark-horizontal.png'
+                  : settings?.lightLogoUrl || settings?.horizontalLogoUrl || '/logo-light-horizontal.png'
+              }
+              alt={settings?.name || 'iFleon Intelligent Frameworks'}
               className="h-9 w-auto object-contain"
             />
           </div>

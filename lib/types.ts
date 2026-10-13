@@ -210,6 +210,8 @@ export interface CompanySettings {
   quotationApprovalThreshold: number; // e.g. 100000
   horizontalLogoUrl: string;
   iconLogoUrl: string;
+  lightLogoUrl?: string;
+  darkLogoUrl?: string;
 }
 
 export interface CRMTheme {

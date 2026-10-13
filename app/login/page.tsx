@@ -18,7 +18,7 @@ import {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, loginWithGoogle, isDark } = useCRM();
+  const { login, loginWithGoogle, isDark, settings } = useCRM();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -83,8 +83,12 @@ export default function LoginPage() {
         <div className="px-6 pt-8 pb-6 border-b border-slate-100 dark:border-[#1E2A3E] text-center bg-slate-50/50 dark:bg-[#172132]/30">
           <div className="h-10 flex items-center justify-center mb-4">
             <img
-              src={isDark ? '/logo-dark-horizontal.png' : '/logo-light-horizontal.png'}
-              alt="iFleon Intelligent Frameworks"
+              src={
+                isDark
+                  ? settings?.darkLogoUrl || '/logo-dark-horizontal.png'
+                  : settings?.lightLogoUrl || settings?.horizontalLogoUrl || '/logo-light-horizontal.png'
+              }
+              alt={settings?.name || 'iFleon Intelligent Frameworks'}
               className="h-9 w-auto object-contain"
             />
           </div>

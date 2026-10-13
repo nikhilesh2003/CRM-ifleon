@@ -448,7 +448,9 @@ const INITIAL_SETTINGS: CompanySettings = {
   email: 'contact@ifleon.com',
   website: 'https://ifleon.com',
   quotationApprovalThreshold: 100000, // Quotations >= ₹1,00,000 require manager approval
-  horizontalLogoUrl: '/logo-horizontal.png',
+  horizontalLogoUrl: '/logo-light-horizontal.png',
+  lightLogoUrl: '/logo-light-horizontal.png',
+  darkLogoUrl: '/logo-dark-horizontal.png',
   iconLogoUrl: '/logo-icon.png',
 };
 
