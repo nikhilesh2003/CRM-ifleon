@@ -101,28 +101,28 @@ export default function ReviewInboxPage() {
   }
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-          <FileCheck2 className="w-6 h-6 text-emerald-500" />
-          <span>Manager Review & Feedback Inbox</span>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <FileCheck2 className="w-5 h-5 text-emerald-600" />
+          <span>Management Approvals & Deal Sign-Off</span>
         </h1>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          Review deal closures (Won / Lost validation) and authorize quotations above the approval threshold
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          Review and authorize deal closures (Won / Lost validation) and commercial quotations exceeding policy thresholds
         </p>
       </div>
 
       {/* Section 1: Lead Closures Awaiting Review */}
-      <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="crm-card p-5 space-y-4">
+        <div className="crm-card-header pb-3 flex items-center justify-between">
           <div>
-            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-blue-500" />
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-blue-600" />
               <span>Deal Closures Awaiting Review ({pendingLeads.length})</span>
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Mandatory approval required whenever a lead moves to Won or Lost
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+              Mandatory sign-off required whenever a dealership lead transitions to Won or Lost
             </p>
           </div>
         </div>
@@ -135,18 +135,18 @@ export default function ReviewInboxPage() {
         ) : (
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {pendingLeads.map((lead) => (
-              <div key={lead.id} className="py-4 space-y-3">
+              <div key={lead.id} className="py-3.5 space-y-2.5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2">
                       <Link
                         href={`/leads/${lead.id}`}
-                        className="font-bold text-sm text-slate-900 dark:text-white hover:text-blue-500"
+                        className="font-bold text-sm text-slate-900 dark:text-white hover:text-blue-600"
                       >
                         {lead.businessName}
                       </Link>
                       <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
                           lead.status === 'Won'
                             ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                             : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
@@ -155,7 +155,7 @@ export default function ReviewInboxPage() {
                         {lead.status}
                       </span>
                       {lead.status === 'Won' && lead.finalDealAmount && (
-                        <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs">
+                        <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-xs tabular-nums">
                           ₹{lead.finalDealAmount.toLocaleString()}
                         </span>
                       )}
@@ -166,34 +166,34 @@ export default function ReviewInboxPage() {
                       <span className="flex items-center gap-1"><Briefcase className="w-3.5 h-3.5 text-slate-400" /> Submitted by: {lead.consultantName}</span>
                     </div>
                     {lead.notes && (
-                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-1.5 italic bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg">
-                        "{lead.notes}"
+                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-1.5 italic bg-slate-50 dark:bg-slate-800/50 p-2 rounded-md border border-slate-200 dark:border-slate-800">
+                        &quot;{lead.notes}&quot;
                       </p>
                     )}
                   </div>
                 </div>
 
                 {/* Manager Feedback Input & Decision Buttons */}
-                <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-1">
                   <input
                     type="text"
-                    placeholder="Provide manager comments or feedback..."
+                    placeholder="Provide manager audit notes or sign-off feedback..."
                     value={feedbackText[lead.id] || ''}
                     onChange={(e) =>
                       setFeedbackText({ ...feedbackText, [lead.id]: e.target.value })
                     }
-                    className="w-full sm:flex-1 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white"
+                    className="w-full sm:flex-1 px-3 py-1.5 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white"
                   />
                   <div className="flex items-center gap-2 w-full sm:w-auto">
                     <button
                       onClick={() => handleLeadReview(lead.id, 'Approved')}
-                      className="flex-1 sm:flex-initial px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-sm transition"
+                      className="flex-1 sm:flex-initial px-3.5 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs shadow-xs transition"
                     >
-                      Approve Deal
+                      Authorize Deal
                     </button>
                     <button
                       onClick={() => handleLeadReview(lead.id, 'Needs changes')}
-                      className="flex-1 sm:flex-initial px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs shadow-sm transition"
+                      className="flex-1 sm:flex-initial px-3.5 py-1.5 rounded-md bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs shadow-xs transition"
                     >
                       Request Changes
                     </button>
@@ -206,15 +206,17 @@ export default function ReviewInboxPage() {
       </div>
 
       {/* Section 2: Quotations Above Approval Threshold */}
-      <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-        <div>
-          <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <FileText className="w-5 h-5 text-amber-500" />
-            <span>High-Value Quotations Requiring Approval ({pendingQuotations.length})</span>
-          </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Quotations exceeding the ₹{settings?.quotationApprovalThreshold.toLocaleString() || '1,00,000'} company limit
-          </p>
+      <div className="crm-card p-5 space-y-4">
+        <div className="crm-card-header pb-3 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <FileText className="w-4 h-4 text-amber-500" />
+              <span>High-Value Quotations Requiring Sign-Off ({pendingQuotations.length})</span>
+            </h2>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+              Quotations exceeding the ₹{settings?.quotationApprovalThreshold.toLocaleString() || '1,00,000'} policy threshold
+            </p>
+          </div>
         </div>
 
         {pendingQuotations.length === 0 ? (
@@ -225,21 +227,21 @@ export default function ReviewInboxPage() {
         ) : (
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {pendingQuotations.map((doc) => (
-              <div key={doc.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div key={doc.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold text-sm text-slate-900 dark:text-white">
+                    <span className="font-mono font-bold text-sm text-slate-900 dark:text-white tabular-nums">
                       {doc.docNumber}
                     </span>
                     <span className="font-bold text-slate-800 dark:text-slate-200 text-sm">
                       {doc.businessName}
                     </span>
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs">
+                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-xs tabular-nums">
                       ₹{doc.total.toLocaleString()}
                     </span>
                   </div>
                   <p className="text-xs text-slate-500">
-                    Prepared by: <strong>{doc.consultantName}</strong> • {doc.selectedModules.length} Modules included
+                    Prepared by: <strong>{doc.consultantName}</strong> • {doc.selectedModules.length} Modules configured
                   </p>
                   <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-1">
                     {doc.projectSummary}
@@ -249,13 +251,13 @@ export default function ReviewInboxPage() {
                 <div className="flex items-center gap-2">
                   <Link
                     href={`/quotations`}
-                    className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-200"
+                    className="px-3 py-1.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-xs hover:bg-slate-200 border border-slate-200 dark:border-slate-700 transition"
                   >
                     Review Details
                   </Link>
                   <button
                     onClick={() => handleQuotationApprove(doc.id)}
-                    className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-sm transition"
+                    className="px-3.5 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs shadow-xs transition"
                   >
                     Authorize & Mark Ready
                   </button>

@@ -274,69 +274,69 @@ function NewQuotationPage() {
           <ChevronLeft className="w-4 h-4" />
           <span>Back to Quotations List</span>
         </Link>
-        <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">
+        <span className="text-xs font-mono font-bold text-blue-600 uppercase tracking-wider">
           Document Generator
         </span>
       </div>
 
-      <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white">
-            Create Branded Quotation or Proposal
+      <div className="crm-card p-6 space-y-6">
+        <div className="border-b border-slate-200 dark:border-slate-800 pb-4">
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+            Generate Branded Quotation or Proposal
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Build PowerPoint presentations (.pptx) and comprehensive proposals with automated numbering and AI drafted sections
+            Build PowerPoint decks (.pptx) and comprehensive proposals with automated numbering and client meeting minutes synthesis
           </p>
         </div>
 
         {/* Format Selector: Quotation vs Proposal */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           <button
             type="button"
             onClick={() => setDocType('quotation')}
-            className={`p-4 rounded-xl border-2 text-left transition ${
+            className={`p-3.5 rounded-md border text-left transition ${
               docType === 'quotation'
-                ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-100 shadow-sm'
-                : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                ? 'border-blue-600 bg-blue-50/70 dark:bg-blue-950/40 text-blue-950 dark:text-blue-100 ring-1 ring-blue-600/30'
+                : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-slate-300'
             }`}
           >
             <div className="flex items-center justify-between mb-1">
-              <span className="font-bold text-sm">Commercial Quotation</span>
-              <Presentation className="w-4 h-4 text-orange-500" />
+              <span className="font-bold text-xs uppercase tracking-wide">Commercial Quotation</span>
+              <Presentation className="w-4 h-4 text-blue-600" />
             </div>
-            <p className="text-xs opacity-80">
-              PowerPoint (.pptx) slides format, price & deliverables focused
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              PowerPoint (.pptx) slides deck, itemized pricing and deliverables focused
             </p>
           </button>
 
           <button
             type="button"
             onClick={() => setDocType('proposal')}
-            className={`p-4 rounded-xl border-2 text-left transition ${
+            className={`p-3.5 rounded-md border text-left transition ${
               docType === 'proposal'
-                ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-100 shadow-sm'
-                : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                ? 'border-blue-600 bg-blue-50/70 dark:bg-blue-950/40 text-blue-950 dark:text-blue-100 ring-1 ring-blue-600/30'
+                : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-slate-300'
             }`}
           >
             <div className="flex items-center justify-between mb-1">
-              <span className="font-bold text-sm">Detailed Proposal</span>
-              <FileText className="w-4 h-4 text-blue-500" />
+              <span className="font-bold text-xs uppercase tracking-wide">Detailed Proposal</span>
+              <FileText className="w-4 h-4 text-blue-600" />
             </div>
-            <p className="text-xs opacity-80">
-              Comprehensive PDF proposal with executive summary & needs analysis
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              Comprehensive PDF proposal with executive summary, needs analysis and architecture
             </p>
           </button>
         </div>
 
         {/* Lead Selection */}
-        <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 space-y-3">
-          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-            Select Target Client Dealership *
+        <div className="p-4 rounded-md bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-3">
+          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+            Target Client Dealership
           </label>
           <select
             value={selectedLeadId}
             onChange={(e) => setSelectedLeadId(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-white"
+            className="w-full px-3 py-2 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-900 dark:text-white"
           >
             {leads.map((l) => (
               <option key={l.id} value={l.id}>
@@ -378,10 +378,10 @@ function NewQuotationPage() {
                 <div
                   key={mod.id}
                   onClick={() => toggleScopeModule(mod.name)}
-                  className={`p-3 rounded-xl border text-xs cursor-pointer transition flex items-start gap-2.5 ${
+                  className={`p-3 rounded-md border text-xs cursor-pointer transition flex items-start gap-2.5 ${
                     isChecked
-                      ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-500 text-blue-900 dark:text-blue-100 shadow-sm'
-                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                      ? 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-600 text-blue-950 dark:text-blue-100 shadow-sm'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700'
                   }`}
                 >
                   <input
@@ -392,7 +392,7 @@ function NewQuotationPage() {
                   />
                   <div>
                     <span className="font-bold block">{mod.name}</span>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5">
                       {mod.description}
                     </span>
                   </div>
@@ -406,8 +406,8 @@ function NewQuotationPage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                Commercial Pricing Table
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider text-xs">
+                Commercial Pricing Line Items
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Configure deliverable line items, quantities, rates and discounts
@@ -423,7 +423,7 @@ function NewQuotationPage() {
                   e.target.value = '';
                 }}
                 defaultValue=""
-                className="py-1 px-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300"
+                className="py-1 px-2.5 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-700 dark:text-slate-300"
               >
                 <option value="" disabled>+ Add from Price List...</option>
                 {priceList.map((p) => (
@@ -436,7 +436,7 @@ function NewQuotationPage() {
               <button
                 type="button"
                 onClick={handleAddCustomLineItem}
-                className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-semibold text-xs"
+                className="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-medium text-xs border border-slate-200 dark:border-slate-700"
               >
                 + Custom Item
               </button>
@@ -444,27 +444,27 @@ function NewQuotationPage() {
           </div>
 
           {/* Table */}
-          <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+          <div className="border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden bg-white dark:bg-slate-900">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 font-bold text-slate-500">
+              <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 font-bold text-slate-500 uppercase tracking-wider text-[11px]">
                 <tr>
-                  <th className="p-2.5">Item / Service</th>
-                  <th className="p-2.5">Scope Description</th>
-                  <th className="p-2.5 w-16 text-center">Qty</th>
-                  <th className="p-2.5 w-28 text-right">Rate (₹)</th>
-                  <th className="p-2.5 w-28 text-right">Amount (₹)</th>
-                  <th className="p-2.5 w-10"></th>
+                  <th className="py-2.5 px-3">Item / Service</th>
+                  <th className="py-2.5 px-3">Scope Description</th>
+                  <th className="py-2.5 px-3 w-16 text-center">Qty</th>
+                  <th className="py-2.5 px-3 w-28 text-right">Rate (₹)</th>
+                  <th className="py-2.5 px-3 w-28 text-right">Amount (₹)</th>
+                  <th className="py-2.5 px-3 w-10"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {lineItems.map((item, idx) => (
-                  <tr key={item.id} className="hover:bg-slate-50/50">
+                  <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
                     <td className="p-2">
                       <input
                         type="text"
                         value={item.moduleOrItem}
                         onChange={(e) => handleUpdateLineItem(idx, 'moduleOrItem', e.target.value)}
-                        className="w-full px-2 py-1 rounded bg-transparent border border-transparent hover:border-slate-300 focus:border-blue-500 font-semibold"
+                        className="w-full px-2 py-1 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-white"
                       />
                     </td>
                     <td className="p-2">
@@ -472,7 +472,7 @@ function NewQuotationPage() {
                         type="text"
                         value={item.description}
                         onChange={(e) => handleUpdateLineItem(idx, 'description', e.target.value)}
-                        className="w-full px-2 py-1 rounded bg-transparent border border-transparent hover:border-slate-300 focus:border-blue-500 text-slate-500"
+                        className="w-full px-2 py-1 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400"
                       />
                     </td>
                     <td className="p-2">
@@ -481,7 +481,7 @@ function NewQuotationPage() {
                         min="1"
                         value={item.qty}
                         onChange={(e) => handleUpdateLineItem(idx, 'qty', Number(e.target.value))}
-                        className="w-full px-2 py-1 text-center rounded bg-transparent border border-slate-200 dark:border-slate-700"
+                        className="w-full px-2 py-1 text-center rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono"
                       />
                     </td>
                     <td className="p-2 text-right">
@@ -489,17 +489,17 @@ function NewQuotationPage() {
                         type="number"
                         value={item.rate}
                         onChange={(e) => handleUpdateLineItem(idx, 'rate', Number(e.target.value))}
-                        className="w-full px-2 py-1 text-right rounded bg-transparent border border-slate-200 dark:border-slate-700 font-mono"
+                        className="w-full px-2 py-1 text-right rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono"
                       />
                     </td>
-                    <td className="p-2 text-right font-mono font-bold text-slate-900 dark:text-white">
+                    <td className="p-2 text-right font-mono font-bold text-slate-900 dark:text-white tabular-nums">
                       ₹{item.amount.toLocaleString()}
                     </td>
                     <td className="p-2 text-center">
                       <button
                         type="button"
                         onClick={() => handleRemoveLineItem(idx)}
-                        className="text-slate-400 hover:text-rose-500"
+                        className="text-slate-400 hover:text-rose-500 p-1"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -511,10 +511,10 @@ function NewQuotationPage() {
           </div>
 
           {/* Subtotal, Discount & Total Row */}
-          <div className="flex flex-col sm:flex-row items-end justify-end gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-xs">
-            <div className="space-y-1 text-right">
+          <div className="flex flex-col sm:flex-row items-end justify-end gap-4 p-4 rounded-md bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-xs">
+            <div className="space-y-1.5 text-right">
               <div className="text-slate-500">
-                Subtotal: <strong className="text-slate-900 dark:text-white font-mono">₹{subtotal.toLocaleString()}</strong>
+                Subtotal: <strong className="text-slate-900 dark:text-white font-mono tabular-nums">₹{subtotal.toLocaleString()}</strong>
               </div>
               <div className="flex items-center gap-2 justify-end">
                 <span className="text-slate-500">Special Discount (₹):</span>
@@ -523,15 +523,15 @@ function NewQuotationPage() {
                   min="0"
                   value={discount}
                   onChange={(e) => setDiscount(Number(e.target.value))}
-                  className="w-24 px-2 py-0.5 text-right rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-xs"
+                  className="w-24 px-2 py-1 text-right rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-xs tabular-nums"
                 />
               </div>
-              <div className="text-base font-black text-blue-600 dark:text-blue-400 pt-1">
+              <div className="text-base font-bold text-blue-600 dark:text-blue-400 pt-1 font-mono tabular-nums">
                 Total Quotation: ₹{total.toLocaleString()}
               </div>
               {settings && settings.quotationApprovalThreshold > 0 && total >= settings.quotationApprovalThreshold && (
-                <div className="text-[10px] text-amber-600 font-bold flex items-center gap-1 justify-end">
-                  <AlertCircle className="w-3 h-3" />
+                <div className="text-[11px] text-amber-600 font-medium flex items-center gap-1 justify-end pt-1">
+                  <AlertCircle className="w-3.5 h-3.5" />
                   <span>Exceeds ₹{settings.quotationApprovalThreshold.toLocaleString()} threshold. Will require Manager approval.</span>
                 </div>
               )}
@@ -539,13 +539,13 @@ function NewQuotationPage() {
           </div>
         </div>
 
-        {/* AI Drafting Toolbar */}
-        <div className="p-4 rounded-xl bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white space-y-3">
-          <div className="flex items-center justify-between">
+        {/* Proposal Scope & Narrative Assistant */}
+        <div className="p-4 rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 space-y-2.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-sky-400" />
-              <span className="text-xs font-bold text-sky-200">
-                AI Quotation & Proposal Text Drafter
+              <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                Meeting Minutes (MoM) Narrative Assistant
               </span>
             </div>
 
@@ -553,28 +553,28 @@ function NewQuotationPage() {
               type="button"
               onClick={handleAIDraftWording}
               disabled={aiDrafting || !selectedLead}
-              className="px-3.5 py-1.5 rounded-xl bg-blue-500 hover:bg-blue-400 text-white font-bold text-xs flex items-center gap-1.5 shadow disabled:opacity-50 transition"
+              className="px-3.5 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs flex items-center gap-1.5 shadow-sm disabled:opacity-50 transition"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              <span>{aiDrafting ? 'Drafting with AI...' : 'Draft Descriptive Text'}</span>
+              <span>{aiDrafting ? 'Synthesizing Meeting Minutes...' : 'Draft Narrative from Minutes'}</span>
             </button>
           </div>
-          <p className="text-[11px] text-blue-200 leading-relaxed">
-            Uses {selectedLead?.businessName}'s meeting notes and chosen modules to craft persuasive project summaries and executive sections. AI never invents pricing numbers.
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+            Synthesizes logged client meeting notes and selected modules into executive proposal sections. Pricing and rates remain strictly controlled by the consultant.
           </p>
         </div>
 
         {/* Project Summary */}
         <div>
-          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-            Project Summary (AI draft, consultant edits) *
+          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+            Project Summary *
           </label>
           <textarea
             rows={3}
-            placeholder="Two or three lines on what will be built..."
+            placeholder="Core summary of deliverables and scope..."
             value={projectSummary}
             onChange={(e) => setProjectSummary(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white leading-relaxed focus:ring-1 focus:ring-blue-500"
+            className="w-full px-3 py-2 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white leading-relaxed focus:ring-1 focus:ring-blue-600"
           ></textarea>
         </div>
 
@@ -582,38 +582,38 @@ function NewQuotationPage() {
         {docType === 'proposal' && (
           <div className="space-y-4 pt-2 border-t border-slate-200 dark:border-slate-800">
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Executive Summary (The client's problem & iFleon's answer)
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                Executive Summary (Client Challenge & Proposed Architecture)
               </label>
               <textarea
                 rows={3}
                 value={executiveSummary}
                 onChange={(e) => setExecutiveSummary(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white leading-relaxed"
+                className="w-full px-3 py-2 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white leading-relaxed"
               ></textarea>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Understanding of Your Needs (From meeting minutes)
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                Understanding of Needs (Derived from client minutes)
               </label>
               <textarea
                 rows={3}
                 value={understandingOfNeeds}
                 onChange={(e) => setUnderstandingOfNeeds(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white leading-relaxed"
+                className="w-full px-3 py-2 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white leading-relaxed"
               ></textarea>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                 Proposed Solution Architecture
               </label>
               <textarea
                 rows={3}
                 value={proposedSolution}
                 onChange={(e) => setProposedSolution(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white leading-relaxed"
+                className="w-full px-3 py-2 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white leading-relaxed"
               ></textarea>
             </div>
           </div>
@@ -622,40 +622,40 @@ function NewQuotationPage() {
         {/* Payment Terms & Timeline */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
               Payment Terms & Milestones
             </label>
             <input
               type="text"
               value={paymentTerms}
               onChange={(e) => setPaymentTerms(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white"
+              className="w-full px-3 py-2 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
               Delivery Timeline
             </label>
             <input
               type="text"
               value={timeline}
               onChange={(e) => setTimeline(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white"
+              className="w-full px-3 py-2 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white"
             />
           </div>
         </div>
 
         {/* Terms and Conditions */}
         <div>
-          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
             Standard Commercial Terms & Conditions
           </label>
           <textarea
             rows={2}
             value={termsAndConditions}
             onChange={(e) => setTermsAndConditions(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white"
+            className="w-full px-3 py-2 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white"
           ></textarea>
         </div>
 
@@ -663,7 +663,7 @@ function NewQuotationPage() {
         <div className="flex flex-wrap items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
           <Link
             href="/quotations"
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:bg-slate-100"
+            className="px-4 py-2 rounded-md text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
           >
             Cancel
           </Link>
@@ -672,7 +672,7 @@ function NewQuotationPage() {
             type="button"
             onClick={() => handleCreateDocument(false)}
             disabled={isSubmitting}
-            className="px-5 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 text-slate-800 dark:text-slate-200 font-semibold text-xs transition"
+            className="px-4 py-2 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs border border-slate-200 dark:border-slate-700 transition"
           >
             Save Document Record
           </button>
@@ -681,10 +681,10 @@ function NewQuotationPage() {
             type="button"
             onClick={() => handleCreateDocument(true)}
             disabled={isSubmitting}
-            className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center gap-1.5 shadow-md shadow-blue-500/20 transition"
+            className="px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm transition"
           >
             <Presentation className="w-3.5 h-3.5" />
-            <span>Save & Download PPTX</span>
+            <span>Save & Download PPTX Deck</span>
           </button>
         </div>
       </div>
