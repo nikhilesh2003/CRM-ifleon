@@ -11,6 +11,7 @@ import {
   Clock,
   User,
   Shield,
+  Briefcase,
   FileCheck2,
 } from 'lucide-react';
 
@@ -76,8 +77,16 @@ export default function AuditLogPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-            {currentUser.role === 'admin' ? '👑 Admin Full Audit' : '👔 Manager Read-Only'}
+          <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+            {currentUser.role === 'admin' ? (
+              <>
+                <Shield className="w-3.5 h-3.5 text-purple-500" /> Admin Full Audit
+              </>
+            ) : (
+              <>
+                <Briefcase className="w-3.5 h-3.5 text-blue-500" /> Manager Read-Only
+              </>
+            )}
           </span>
         </div>
       </div>

@@ -15,6 +15,10 @@ import {
   AlertCircle,
   FileText,
   ChevronRight,
+  User,
+  Phone,
+  MapPin,
+  Briefcase,
 } from 'lucide-react';
 
 export default function ReviewInboxPage() {
@@ -156,10 +160,10 @@ export default function ReviewInboxPage() {
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-slate-500 mt-1 flex flex-wrap gap-3">
-                      <span>👤 Contact: {lead.contactPerson} ({lead.phone})</span>
-                      <span>📍 {lead.location}</span>
-                      <span>👔 Submitted by: {lead.consultantName}</span>
+                    <div className="text-xs text-slate-500 mt-1 flex flex-wrap gap-3 items-center">
+                      <span className="flex items-center gap-1"><User className="w-3.5 h-3.5 text-slate-400" /> Contact: {lead.contactPerson} ({lead.phone})</span>
+                      <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-slate-400" /> {lead.location}</span>
+                      <span className="flex items-center gap-1"><Briefcase className="w-3.5 h-3.5 text-slate-400" /> Submitted by: {lead.consultantName}</span>
                     </div>
                     {lead.notes && (
                       <p className="text-xs text-slate-600 dark:text-slate-300 mt-1.5 italic bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg">

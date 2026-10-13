@@ -181,11 +181,11 @@ export default function UserManagementPage() {
                   <select
                     value={u.role}
                     onChange={(e) => handleChangeRole(u, e.target.value as UserRole)}
-                    className="py-1 px-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-semibold text-xs"
+                    className="py-1 px-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-semibold text-xs text-slate-800 dark:text-slate-200"
                   >
-                    <option value="admin">👑 Admin</option>
-                    <option value="manager">👔 Manager</option>
-                    <option value="consultant">🎯 Consultant</option>
+                    <option value="admin">Admin</option>
+                    <option value="manager">Manager</option>
+                    <option value="consultant">Consultant</option>
                   </select>
                 </td>
 
@@ -286,9 +286,9 @@ export default function UserManagementPage() {
                   onChange={(e) => setRole(e.target.value as UserRole)}
                   className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
                 >
-                  <option value="consultant">🎯 Consultant (Manage own leads & quotes)</option>
-                  <option value="manager">👔 Manager (Review work, approve leads, campaigns)</option>
-                  <option value="admin">👑 Admin (Full system control)</option>
+                  <option value="consultant">Consultant (Manage own leads & quotes)</option>
+                  <option value="manager">Manager (Review work, approve leads, campaigns)</option>
+                  <option value="admin">Admin (Full system control)</option>
                 </select>
               </div>
 

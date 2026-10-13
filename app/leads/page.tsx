@@ -26,6 +26,12 @@ import {
   List,
   ChevronRight,
   ShieldAlert,
+  User,
+  MapPin,
+  Briefcase,
+  Copy,
+  Check,
+  MessageSquare,
 } from 'lucide-react';
 
 export default function LeadsPageWrapper() {
@@ -49,6 +55,27 @@ function LeadsPage() {
   const [statusFilter, setStatusFilter] = useState<string>(searchParams.get('status') || 'all');
   const [consultantFilter, setConsultantFilter] = useState('all');
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
+  const [quickFilter, setQuickFilter] = useState<'all' | 'my' | 'today' | 'overdue' | 'won'>('all');
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const handleCopyText = (text: string, fieldId: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(fieldId);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
+
+  const handleQuickStatusChange = async (leadId: string, newStatus: LeadStatus) => {
+    try {
+      await fetch(`/api/leads/${leadId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus, currentUser }),
+      });
+      fetchLeads();
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(searchParams.get('action') === 'new');
@@ -93,6 +120,8 @@ function LeadsPage() {
     fetchLeads();
   }, []);
 
+  const todayStr = new Date().toISOString().slice(0, 10);
+
   // Filter leads based on state
   const filteredLeads = leads.filter((lead) => {
     const matchesSearch =
@@ -104,7 +133,18 @@ function LeadsPage() {
     const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
     const matchesConsultant = consultantFilter === 'all' || lead.consultantId === consultantFilter;
 
-    return matchesSearch && matchesStatus && matchesConsultant;
+    let matchesQuick = true;
+    if (quickFilter === 'my') {
+      matchesQuick = lead.consultantId === currentUser.id;
+    } else if (quickFilter === 'today') {
+      matchesQuick = lead.followUpDate === todayStr && lead.status !== 'Won' && lead.status !== 'Lost';
+    } else if (quickFilter === 'overdue') {
+      matchesQuick = lead.followUpDate < todayStr && lead.status !== 'Won' && lead.status !== 'Lost';
+    } else if (quickFilter === 'won') {
+      matchesQuick = lead.status === 'Won';
+    }
+
+    return matchesSearch && matchesStatus && matchesConsultant && matchesQuick;
   });
 
   // Handle Export to Excel
@@ -368,6 +408,82 @@ function LeadsPage() {
         </div>
       </div>
 
+      {/* Quick Filter Segmented Pills (SuiteCRM & UIUX pattern) */}
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          onClick={() => setQuickFilter('all')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+            quickFilter === 'all'
+              ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-800 hover:bg-slate-50'
+          }`}
+        >
+          <span>All Deals</span>
+          <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${quickFilter === 'all' ? 'bg-blue-700 text-white' : 'bg-slate-100 dark:bg-slate-800'}`}>
+            {leads.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setQuickFilter('my')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+            quickFilter === 'my'
+              ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-800 hover:bg-slate-50'
+          }`}
+        >
+          <span>My Assigned Leads</span>
+          <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${quickFilter === 'my' ? 'bg-blue-700 text-white' : 'bg-slate-100 dark:bg-slate-800'}`}>
+            {leads.filter((l) => l.consultantId === currentUser.id).length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setQuickFilter('today')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+            quickFilter === 'today'
+              ? 'bg-amber-600 text-white shadow-sm shadow-amber-500/20'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-800 hover:bg-slate-50'
+          }`}
+        >
+          <Clock className="w-3.5 h-3.5" />
+          <span>Due Today</span>
+          <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${quickFilter === 'today' ? 'bg-amber-700 text-white' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'}`}>
+            {leads.filter((l) => l.followUpDate === todayStr && l.status !== 'Won' && l.status !== 'Lost').length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setQuickFilter('overdue')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+            quickFilter === 'overdue'
+              ? 'bg-rose-600 text-white shadow-sm shadow-rose-500/20'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-800 hover:bg-slate-50'
+          }`}
+        >
+          <AlertCircle className="w-3.5 h-3.5" />
+          <span>Overdue</span>
+          <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${quickFilter === 'overdue' ? 'bg-rose-700 text-white' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300'}`}>
+            {leads.filter((l) => l.followUpDate < todayStr && l.status !== 'Won' && l.status !== 'Lost').length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setQuickFilter('won')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+            quickFilter === 'won'
+              ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/20'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-800 hover:bg-slate-50'
+          }`}
+        >
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          <span>Won Deals</span>
+          <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${quickFilter === 'won' ? 'bg-emerald-700 text-white' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'}`}>
+            {leads.filter((l) => l.status === 'Won').length}
+          </span>
+        </button>
+      </div>
+
       {/* View Mode: Table */}
       {viewMode === 'table' ? (
         <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
@@ -427,8 +543,9 @@ function LeadsPage() {
                           >
                             {lead.businessName}
                           </Link>
-                          <span className="text-slate-500 dark:text-slate-400">
-                            👤 {lead.contactPerson}
+                          <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5">
+                            <User className="w-3 h-3 text-slate-400" />
+                            <span>{lead.contactPerson}</span>
                           </span>
                           {lead.tags && lead.tags.length > 0 && (
                             <div className="flex gap-1 mt-1">
@@ -444,41 +561,71 @@ function LeadsPage() {
                           )}
                         </td>
 
-                        {/* Phone / Click-to-call / WhatsApp */}
+                        {/* Phone / Click-to-call / WhatsApp / Copy */}
                         <td className="py-3.5 px-4 whitespace-nowrap">
-                          <div className="text-slate-700 dark:text-slate-300 font-mono mb-1">
-                            {lead.phone}
+                          <div className="flex items-center gap-1.5 font-mono text-slate-800 dark:text-slate-200 mb-1">
+                            <span>{lead.phone}</span>
+                            <button
+                              onClick={() => handleCopyText(lead.phone, 'phone-' + lead.id)}
+                              className="p-1 rounded hover:bg-slate-200/60 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+                              title="Copy phone number"
+                            >
+                              {copiedField === 'phone-' + lead.id ? (
+                                <Check className="w-3 h-3 text-emerald-500" />
+                              ) : (
+                                <Copy className="w-3 h-3" />
+                              )}
+                            </button>
                           </div>
                           <div className="flex items-center gap-1.5">
                             <a
                               href={`tel:${lead.phone}`}
-                              className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold hover:bg-emerald-200 transition"
+                              className="px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold hover:bg-emerald-200 transition flex items-center gap-1"
                               title="Click to call"
                             >
-                              Call
+                              <PhoneCall className="w-2.5 h-2.5" />
+                              <span>Call</span>
                             </a>
                             <a
                               href={`https://wa.me/${lead.phone.replace(/\D/g, '')}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="px-2 py-0.5 rounded bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 text-[10px] font-bold hover:bg-green-200 transition"
-                              title="Click to WhatsApp"
+                              className="px-2 py-0.5 rounded-lg bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-300 text-[10px] font-bold hover:bg-green-200 transition flex items-center gap-1"
+                              title="Chat on WhatsApp"
                             >
-                              WhatsApp
+                              <MessageSquare className="w-2.5 h-2.5" />
+                              <span>WhatsApp</span>
                             </a>
                           </div>
                         </td>
 
                         {/* Location */}
                         <td className="py-3.5 px-4 text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                          📍 {lead.location}
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-slate-400" />
+                            <span>{lead.location}</span>
+                          </span>
                         </td>
 
-                        {/* Status */}
+                        {/* Status with Quick Lifecycle Selector */}
                         <td className="py-3.5 px-4 whitespace-nowrap">
-                          <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${statusBadge}`}>
-                            {lead.status}
-                          </span>
+                          {canEditLead(lead) ? (
+                            <select
+                              value={lead.status}
+                              onChange={(e) => handleQuickStatusChange(lead.id, e.target.value as LeadStatus)}
+                              className={`py-1 px-2 rounded-lg text-xs font-semibold border cursor-pointer ${statusBadge} focus:outline-none`}
+                            >
+                              <option value="New / Contacted">New / Contacted</option>
+                              <option value="Interested / Follow-up">Interested / Follow-up</option>
+                              <option value="Proposal sent / Negotiation">Proposal sent / Negotiation</option>
+                              <option value="Won">Won</option>
+                              <option value="Lost">Lost</option>
+                            </select>
+                          ) : (
+                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${statusBadge}`}>
+                              {lead.status}
+                            </span>
+                          )}
                           {lead.status === 'Won' && lead.finalDealAmount && (
                             <span className="block mt-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
                               ₹{lead.finalDealAmount.toLocaleString()}
@@ -571,9 +718,16 @@ function LeadsPage() {
                 key={colStatus}
                 className="bg-slate-100/70 dark:bg-slate-900/50 rounded-2xl p-3 border border-slate-200 dark:border-slate-800 space-y-3"
               >
-                <div className={`p-2.5 rounded-xl border font-bold text-xs flex items-center justify-between ${headerBg}`}>
-                  <span className="line-clamp-1">{colStatus}</span>
-                  <span className="px-2 py-0.5 rounded-full bg-white dark:bg-slate-800 text-[10px] font-black">
+                <div className={`p-2.5 rounded-xl border text-xs flex items-center justify-between ${headerBg}`}>
+                  <div>
+                    <span className="font-bold line-clamp-1">{colStatus}</span>
+                    {colLeads.reduce((s, l) => s + (l.finalDealAmount || 0), 0) > 0 && (
+                      <span className="text-[10px] opacity-80 font-mono block">
+                        ₹{colLeads.reduce((s, l) => s + (l.finalDealAmount || 0), 0).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full bg-white dark:bg-slate-800 text-[10px] font-black shadow-xs">
                     {colLeads.length}
                   </span>
                 </div>
@@ -582,41 +736,84 @@ function LeadsPage() {
                   {colLeads.map((lead) => (
                     <div
                       key={lead.id}
-                      className="p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-sm space-y-2"
+                      className="p-3.5 rounded-xl bg-white dark:bg-slate-850 border border-slate-200/80 dark:border-slate-700/80 shadow-xs hover:shadow-md card-hover-fx space-y-2.5"
                     >
-                      <Link
-                        href={`/leads/${lead.id}`}
-                        className="font-bold text-sm text-slate-900 dark:text-white hover:text-blue-500 block"
-                      >
-                        {lead.businessName}
-                      </Link>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 space-y-0.5">
-                        <div>👤 {lead.contactPerson}</div>
-                        <div>📍 {lead.location}</div>
-                        <div>👔 {lead.consultantName}</div>
+                      <div className="flex items-start justify-between gap-2">
+                        <Link
+                          href={`/leads/${lead.id}`}
+                          className="font-bold text-sm text-slate-900 dark:text-white hover:text-blue-500 block leading-snug"
+                        >
+                          {lead.businessName}
+                        </Link>
+                      </div>
+
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
+                        <div className="flex items-center gap-1.5"><User className="w-3 h-3 text-slate-400" /> <span>{lead.contactPerson}</span></div>
+                        <div className="flex items-center gap-1.5"><MapPin className="w-3 h-3 text-slate-400" /> <span>{lead.location}</span></div>
+                        <div className="flex items-center justify-between font-mono pt-0.5">
+                          <span>{lead.phone}</span>
+                          <button
+                            onClick={() => handleCopyText(lead.phone, 'kanban-phone-' + lead.id)}
+                            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+                            title="Copy phone"
+                          >
+                            {copiedField === 'kanban-phone-' + lead.id ? (
+                              <Check className="w-3 h-3 text-emerald-500" />
+                            ) : (
+                              <Copy className="w-3 h-3" />
+                            )}
+                          </button>
+                        </div>
                       </div>
 
                       {lead.status === 'Won' && lead.finalDealAmount && (
-                        <div className="text-xs font-black text-emerald-600 dark:text-emerald-400">
-                          ₹{lead.finalDealAmount.toLocaleString()}
+                        <div className="text-xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-1 rounded-lg">
+                          Won: ₹{lead.finalDealAmount.toLocaleString()}
                         </div>
                       )}
 
-                      <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
-                        <div className="flex gap-1">
+                      {/* Quick Move Stage & Action Buttons */}
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1">
                           <a
                             href={`tel:${lead.phone}`}
-                            className="p-1 rounded bg-slate-100 dark:bg-slate-700 hover:text-emerald-500 text-slate-600"
-                            title="Call"
+                            className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 transition"
+                            title="Call client"
                           >
                             <PhoneCall className="w-3 h-3" />
                           </a>
+                          <a
+                            href={`https://wa.me/${lead.phone.replace(/\D/g, '')}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="p-1.5 rounded-lg bg-green-50 dark:bg-green-950/50 text-green-700 dark:text-green-300 hover:bg-green-100 transition"
+                            title="Chat on WhatsApp"
+                          >
+                            <MessageSquare className="w-3 h-3" />
+                          </a>
                         </div>
+
+                        {canEditLead(lead) ? (
+                          <select
+                            value={lead.status}
+                            onChange={(e) => handleQuickStatusChange(lead.id, e.target.value as LeadStatus)}
+                            className="py-1 px-1.5 text-[10px] rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 font-semibold text-slate-700 dark:text-slate-200"
+                            title="Move stage"
+                          >
+                            <option value="New / Contacted">New</option>
+                            <option value="Interested / Follow-up">Interested</option>
+                            <option value="Proposal sent / Negotiation">Proposal</option>
+                            <option value="Won">Won</option>
+                            <option value="Lost">Lost</option>
+                          </select>
+                        ) : null}
+
                         <Link
                           href={`/leads/${lead.id}`}
-                          className="text-[10px] font-bold text-blue-500 hover:underline"
+                          className="text-[10px] font-bold text-blue-500 hover:underline flex items-center gap-0.5"
                         >
-                          View MoM & Quote →
+                          <span>Open</span>
+                          <ChevronRight className="w-3 h-3" />
                         </Link>
                       </div>
                     </div>

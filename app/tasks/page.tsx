@@ -13,6 +13,7 @@ import {
   Building2,
   PhoneCall,
   User,
+  MapPin,
   Calendar,
 } from 'lucide-react';
 
@@ -141,8 +142,10 @@ export default function TasksPage() {
                     >
                       {lead.businessName}
                     </Link>
-                    <p className="text-[11px] text-slate-500">
-                      👤 {lead.contactPerson} • 📍 {lead.location}
+                    <p className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                      <span className="flex items-center gap-1"><User className="w-3 h-3 text-slate-400" /> {lead.contactPerson}</span>
+                      <span>•</span>
+                      <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-400" /> {lead.location}</span>
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5">

@@ -150,7 +150,7 @@
       "notes": "Submitted enquiry through landing page. Has 45 cars inventory, currently posting only on Instagram and Olx. Wants their own branded portal.",
       "consultantId": "user-arun",
       "consultantName": "Arun Patel",
-      "managerReview": "Pending",
+      "managerReview": "Approved",
       "managerComment": "",
       "finalDealAmount": null,
       "expectedCloseDate": "2026-10-25",
@@ -160,8 +160,18 @@
       ],
       "attachments": [],
       "createdAt": "2026-10-02T14:30:00Z",
-      "updatedAt": "2026-10-08T09:00:00Z",
-      "updatedBy": "Arun Patel (Consultant)"
+      "updatedAt": "2026-10-13T07:00:19.377Z",
+      "updatedBy": "Rajesh Kumar (admin)",
+      "currentUser": {
+        "id": "user-admin",
+        "name": "Rajesh Kumar",
+        "email": "admin@ifleon.com",
+        "role": "admin",
+        "phone": "+91 98480 11223",
+        "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
+        "disabled": false,
+        "createdAt": "2026-01-10T10:00:00Z"
+      }
     },
     {
       "id": "lead-4",
@@ -579,6 +589,42 @@
   ],
   "auditLogs": [
     {
+      "id": "aud-1791874819374-ivi6",
+      "timestamp": "2026-10-13T07:00:19.374Z",
+      "userId": "user-admin",
+      "userName": "Rajesh Kumar",
+      "userRole": "admin",
+      "action": "Manager Review: Approved",
+      "entityType": "Lead",
+      "entityId": "lead-3",
+      "entityName": "Deccan Auto Hub",
+      "details": "Manager feedback: No comments"
+    },
+    {
+      "id": "aud-1791874714540-064y",
+      "timestamp": "2026-10-13T06:58:34.540Z",
+      "userId": "user-admin",
+      "userName": "Rajesh Kumar",
+      "userRole": "admin",
+      "action": "Updated System Settings",
+      "entityType": "Settings",
+      "entityId": "settings-core",
+      "entityName": "Company & AI Configuration",
+      "details": "Admin updated company profile, theme, or AI provider priorities."
+    },
+    {
+      "id": "aud-1791874610878-xc9p",
+      "timestamp": "2026-10-13T06:56:50.878Z",
+      "userId": "user-admin",
+      "userName": "Rajesh Kumar",
+      "userRole": "admin",
+      "action": "Updated System Settings",
+      "entityType": "Settings",
+      "entityId": "settings-core",
+      "entityName": "Company & AI Configuration",
+      "details": "Admin updated company profile, theme, or AI provider priorities."
+    },
+    {
       "id": "aud-1791873065814-77e8",
       "timestamp": "2026-10-13T06:31:05.814Z",
       "userId": "user-manager",
@@ -692,5 +738,5 @@
       "isDark": false
     }
   ],
-  "activeThemeId": "theme-default"
+  "activeThemeId": "theme-emerald"
 }

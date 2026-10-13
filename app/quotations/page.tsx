@@ -18,6 +18,9 @@ import {
   Printer,
   Sparkles,
   Presentation,
+  User,
+  Copy,
+  Check,
 } from 'lucide-react';
 
 export default function QuotationsListPage() {
@@ -27,6 +30,13 @@ export default function QuotationsListPage() {
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState('all');
   const [previewDoc, setPreviewDoc] = useState<GeneratedDocument | null>(null);
+  const [copiedDocId, setCopiedDocId] = useState<string | null>(null);
+
+  const handleCopyDocRef = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedDocId(id);
+    setTimeout(() => setCopiedDocId(null), 2000);
+  };
 
   const fetchDocs = async () => {
     try {
@@ -174,11 +184,22 @@ export default function QuotationsListPage() {
                 filteredDocs.map((doc) => {
                   return (
                     <tr key={doc.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
-                      {/* Doc Ref */}
+                      {/* Doc Ref & Copy */}
                       <td className="py-3.5 px-4">
-                        <span className="font-mono font-bold text-slate-900 dark:text-white block text-sm">
-                          {doc.docNumber}
-                        </span>
+                        <div className="flex items-center gap-1.5 font-mono font-bold text-slate-900 dark:text-white text-sm">
+                          <span>{doc.docNumber}</span>
+                          <button
+                            onClick={() => handleCopyDocRef(doc.docNumber, doc.id)}
+                            className="p-1 rounded hover:bg-slate-200/60 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+                            title="Copy Quote Reference"
+                          >
+                            {copiedDocId === doc.id ? (
+                              <Check className="w-3 h-3 text-emerald-500" />
+                            ) : (
+                              <Copy className="w-3 h-3" />
+                            )}
+                          </button>
+                        </div>
                         <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                           {doc.type} v{doc.version}
                         </span>
@@ -192,7 +213,10 @@ export default function QuotationsListPage() {
                         >
                           {doc.businessName}
                         </Link>
-                        <span className="text-slate-500">👤 {doc.contactPerson}</span>
+                        <span className="text-slate-500 flex items-center gap-1 mt-0.5">
+                          <User className="w-3 h-3 text-slate-400" />
+                          <span>{doc.contactPerson}</span>
+                        </span>
                       </td>
 
                       {/* Modules */}

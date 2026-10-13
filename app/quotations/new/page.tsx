@@ -17,6 +17,10 @@ import {
   Building2,
   DollarSign,
   AlertCircle,
+  User,
+  Phone,
+  MapPin,
+  Briefcase,
 } from 'lucide-react';
 
 export default function NewQuotationWrapper() {
@@ -343,10 +347,10 @@ function NewQuotationPage() {
 
           {selectedLead && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-[11px] text-slate-500 border-t border-slate-200/60 dark:border-slate-700/60">
-              <div>👤 Contact: <strong className="text-slate-700 dark:text-slate-300">{selectedLead.contactPerson}</strong></div>
-              <div>📞 Phone: <strong className="text-slate-700 dark:text-slate-300">{selectedLead.phone}</strong></div>
-              <div>📍 Location: <strong className="text-slate-700 dark:text-slate-300">{selectedLead.location}</strong></div>
-              <div>👔 Consultant: <strong className="text-slate-700 dark:text-slate-300">{selectedLead.consultantName}</strong></div>
+              <div className="flex items-center gap-1.5"><User className="w-3.5 h-3.5 text-slate-400" /> Contact: <strong className="text-slate-700 dark:text-slate-300">{selectedLead.contactPerson}</strong></div>
+              <div className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-slate-400" /> Phone: <strong className="text-slate-700 dark:text-slate-300">{selectedLead.phone}</strong></div>
+              <div className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-slate-400" /> Location: <strong className="text-slate-700 dark:text-slate-300">{selectedLead.location}</strong></div>
+              <div className="flex items-center gap-1.5"><Briefcase className="w-3.5 h-3.5 text-slate-400" /> Consultant: <strong className="text-slate-700 dark:text-slate-300">{selectedLead.consultantName}</strong></div>
             </div>
           )}
         </div>
