@@ -4,21 +4,29 @@
 
 :root {
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --bg-primary: #F3F4F6;
+  --bg-primary: #F8FAFC;
   --bg-surface: #FFFFFF;
-  --border-color: #E5E7EB;
-  --text-primary: #111827;
-  --text-secondary: #4B5563;
-  --accent-blue: #1D4ED8;
+  --border-color: #E2E8F0;
+  --border-subtle: #F1F5F9;
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #64748B;
+  --accent-blue: #0B5CAB;
+  --accent-blue-hover: #084D91;
+  --brand-cyan: #0F87FC;
 }
 
 .dark {
-  --bg-primary: #0C1017;
-  --bg-surface: #141A24;
-  --border-color: #1F2837;
-  --text-primary: #F3F4F6;
-  --text-secondary: #9CA3AF;
-  --accent-blue: #3B82F6;
+  --bg-primary: #0B0F19;
+  --bg-surface: #111925;
+  --border-color: #1E2A3E;
+  --border-subtle: #172132;
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --accent-blue: #0F87FC;
+  --accent-blue-hover: #38BDF8;
+  --brand-cyan: #0F87FC;
 }
 
 body {
@@ -30,20 +38,47 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Sharp Enterprise Surface Containers */
+.crm-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+}
+
+.dark .crm-card {
+  background-color: #111925;
+  border-color: #1E2A3E;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.25);
+}
+
+.crm-card-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid #E2E8F0;
+  background-color: #F8FAFC;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.dark .crm-card-header {
+  border-color: #1E2A3E;
+  background-color: #172132;
+}
+
 /* Authentic SuiteCRM Enterprise Stepper Chevron */
 .pipeline-stepper {
   display: flex;
   overflow-x: auto;
   border-radius: 6px;
-  background-color: #E5E7EB;
+  background-color: #E2E8F0;
   padding: 2px;
   gap: 2px;
-  border: 1px solid #D1D5DB;
+  border: 1px solid #CBD5E1;
 }
 
 .dark .pipeline-stepper {
-  background-color: #1A2230;
-  border-color: #242E40;
+  background-color: #172132;
+  border-color: #1E2A3E;
 }
 
 .pipeline-step {
@@ -62,69 +97,42 @@ body {
   justify-content: center;
   gap: 6px;
   background-color: #FFFFFF;
-  color: #4B5563;
+  color: #475569;
   border: 1px solid transparent;
 }
 
 .dark .pipeline-step {
-  background-color: #141A24;
-  color: #9CA3AF;
+  background-color: #111925;
+  color: #94A3B8;
 }
 
 .pipeline-step:hover {
-  background-color: #F9FAFB;
-  color: #111827;
+  background-color: #F8FAFC;
+  color: #0F172A;
 }
 
 .dark .pipeline-step:hover {
-  background-color: #1B2332;
-  color: #F3F4F6;
+  background-color: #1A2638;
+  color: #F8FAFC;
 }
 
 .pipeline-step.active {
-  background-color: #1D4ED8 !important;
+  background-color: #0B5CAB !important;
   color: #FFFFFF !important;
-  box-shadow: 0 1px 3px rgba(29, 78, 216, 0.25);
-  border-color: #1E40AF;
+  box-shadow: 0 1px 3px rgba(11, 92, 171, 0.25);
+  border-color: #084887;
 }
 
 .pipeline-step.completed {
   background-color: #EFF6FF;
-  color: #1D4ED8;
+  color: #0B5CAB;
   border-color: #BFDBFE;
 }
 
 .dark .pipeline-step.completed {
-  background-color: #172554;
+  background-color: #17263C;
   color: #93C5FD;
   border-color: #1E3A8A;
-}
-
-/* Sharp Enterprise Surface Containers */
-.crm-card {
-  background-color: #FFFFFF;
-  border: 1px solid #E5E7EB;
-  border-radius: 8px;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
-}
-
-.dark .crm-card {
-  background-color: #141A24;
-  border-color: #222C3C;
-  box-shadow: none;
-}
-
-.crm-card-header {
-  padding: 14px 18px;
-  border-bottom: 1px solid #E5E7EB;
-  background-color: #F9FAFB;
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
-}
-
-.dark .crm-card-header {
-  border-color: #222C3C;
-  background-color: #18202E;
 }
 
 /* Dense Professional Enterprise Tables */
@@ -136,33 +144,33 @@ body {
 }
 
 .crm-table th {
-  background-color: #F9FAFB;
-  color: #4B5563;
+  background-color: #F8FAFC;
+  color: #475569;
   font-weight: 600;
   text-transform: uppercase;
   font-size: 11px;
   letter-spacing: 0.04em;
   padding: 10px 14px;
-  border-bottom: 1px solid #E5E7EB;
+  border-bottom: 1px solid #E2E8F0;
   white-space: nowrap;
 }
 
 .dark .crm-table th {
-  background-color: #18202E;
-  color: #9CA3AF;
-  border-bottom-color: #222C3C;
+  background-color: #172132;
+  color: #94A3B8;
+  border-bottom-color: #1E2A3E;
 }
 
 .crm-table td {
   padding: 11px 14px;
-  border-bottom: 1px solid #F3F4F6;
-  color: #1F2937;
+  border-bottom: 1px solid #F1F5F9;
+  color: #1E293B;
   vertical-align: middle;
 }
 
 .dark .crm-table td {
-  border-bottom-color: #1B2332;
-  color: #E5E7EB;
+  border-bottom-color: #1A2436;
+  color: #E2E8F0;
 }
 
 .crm-table tr:hover td {
@@ -170,7 +178,7 @@ body {
 }
 
 .dark .crm-table tr:hover td {
-  background-color: #18202C;
+  background-color: #151F2F;
 }
 
 /* Tactile micro-interactions (uiux patterns) */
@@ -192,12 +200,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(156, 163, 175, 0.35);
+  background: rgba(148, 163, 184, 0.35);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(156, 163, 175, 0.65);
+  background: rgba(148, 163, 184, 0.65);
 }
 
 /* Print utility for PDF Proposals */

@@ -163,10 +163,10 @@ export default function Sidebar() {
   else if (role === 'manager') RoleIcon = Briefcase;
 
   return (
-    <aside className="w-60 flex-shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111622] flex flex-col justify-between hidden md:flex h-[calc(100vh-3.5rem)] sticky top-14">
+    <aside className="w-60 flex-shrink-0 border-r border-slate-200 dark:border-[#1E2A3E] bg-white dark:bg-[#111925] flex flex-col justify-between hidden md:flex h-[calc(100vh-3.75rem)] sticky top-15">
       <div className="p-3 space-y-5 overflow-y-auto">
         {/* Workspace Mode Badge */}
-        <div className="p-2.5 rounded bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+        <div className="p-2.5 rounded-md bg-slate-50 dark:bg-[#172132] border border-slate-200 dark:border-[#1E2A3E]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200">
               <RoleIcon className="w-3.5 h-3.5 text-blue-600" />
@@ -174,7 +174,7 @@ export default function Sidebar() {
             </div>
             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-1">
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
             {role === 'admin' && 'Full system administration'}
             {role === 'manager' && 'Deal approvals & oversight'}
             {role === 'consultant' && 'Deal pipeline & meetings'}
@@ -189,7 +189,7 @@ export default function Sidebar() {
 
             return (
               <div key={section.title} className="space-y-0.5">
-                <span className="px-2 text-[10px] font-mono uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500 block mb-1">
+                <span className="px-2 text-[10px] font-mono uppercase tracking-wider font-bold text-slate-400 dark:text-slate-400 block mb-1">
                   {section.title}
                 </span>
 
@@ -203,8 +203,8 @@ export default function Sidebar() {
                       href={item.href}
                       className={`flex items-center justify-between px-2.5 py-1.5 rounded text-xs transition ${
                         isActive
-                          ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 font-semibold border-l-2 border-blue-600'
-                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium'
+                          ? 'bg-blue-50 dark:bg-[#1A2638] text-blue-800 dark:text-blue-300 font-semibold border-l-2 border-blue-600'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-[#172132] font-medium'
                       }`}
                     >
                       <div className="flex items-center gap-2">
@@ -216,7 +216,7 @@ export default function Sidebar() {
                           className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-semibold ${
                             isActive
                               ? 'bg-blue-200/60 dark:bg-blue-900/80 text-blue-800 dark:text-blue-200'
-                              : item.badgeColor || 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                              : item.badgeColor || 'bg-slate-100 dark:bg-[#172132] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-[#1E2A3E]'
                           }`}
                         >
                           {item.badge}
@@ -232,9 +232,9 @@ export default function Sidebar() {
       </div>
 
       {/* Footer Info */}
-      <div className="p-3 border-t border-slate-200 dark:border-slate-800 text-[11px] text-slate-400 font-mono flex items-center justify-between">
+      <div className="p-3 border-t border-slate-200 dark:border-[#1E2A3E] text-[11px] text-slate-400 font-mono flex items-center justify-between">
         <span>iFleon CRM</span>
-        <span>v2.0</span>
+        <span>v2.0 Enterprise</span>
       </div>
     </aside>
   );

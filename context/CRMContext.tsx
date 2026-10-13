@@ -32,8 +32,30 @@ export function CRMProvider({ children }: { children: ReactNode }) {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [theme, setTheme] = useState<CRMTheme | null>(null);
   const [settings, setSettings] = useState<CompanySettings | null>(null);
-  const [isDark, setIsDark] = useState<boolean>(true);
+  const [isDark, setIsDark] = useState<boolean>(false);
   const [unreadCount, setUnreadCount] = useState<number>(3);
+
+  // Sync theme with document.documentElement on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('ifleon_theme');
+      if (stored === 'dark') {
+        setIsDark(true);
+        document.documentElement.classList.add('dark');
+      } else if (stored === 'light') {
+        setIsDark(false);
+        document.documentElement.classList.remove('dark');
+      } else {
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        setIsDark(prefersDark);
+        if (prefersDark) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      }
+    }
+  }, []);
 
   const fetchSession = async () => {
     try {
@@ -60,6 +82,15 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         if (found) {
           setTheme(found);
           setIsDark(found.isDark);
+          if (typeof document !== 'undefined') {
+            if (found.isDark) {
+              document.documentElement.classList.add('dark');
+              try { localStorage.setItem('ifleon_theme', 'dark'); } catch (e) {}
+            } else {
+              document.documentElement.classList.remove('dark');
+              try { localStorage.setItem('ifleon_theme', 'light'); } catch (e) {}
+            }
+          }
         }
       }
     } catch (e) {
@@ -89,7 +120,19 @@ export function CRMProvider({ children }: { children: ReactNode }) {
   };
 
   const toggleDarkMode = () => {
-    setIsDark((prev) => !prev);
+    setIsDark((prev) => {
+      const next = !prev;
+      if (typeof document !== 'undefined') {
+        if (next) {
+          document.documentElement.classList.add('dark');
+          try { localStorage.setItem('ifleon_theme', 'dark'); } catch (e) {}
+        } else {
+          document.documentElement.classList.remove('dark');
+          try { localStorage.setItem('ifleon_theme', 'light'); } catch (e) {}
+        }
+      }
+      return next;
+    });
   };
 
   return (
@@ -108,15 +151,18 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         unreadCount,
       }}
     >
-      <div className={isDark ? 'dark' : ''} style={{
-        // Apply dynamic custom CSS variables if custom AI theme is active
-        ...(theme ? {
-          '--theme-primary': theme.primaryColor,
-          '--theme-card': theme.cardBackground,
-          '--theme-bg': theme.backgroundColor,
-          '--theme-radius': theme.borderRadius,
-        } : {})
-      } as React.CSSProperties}>
+      <div
+        className="contents"
+        style={{
+          // Apply dynamic custom CSS variables if custom AI theme is active
+          ...(theme ? {
+            '--theme-primary': theme.primaryColor,
+            '--theme-card': theme.cardBackground,
+            '--theme-bg': theme.backgroundColor,
+            '--theme-radius': theme.borderRadius,
+          } : {})
+        } as React.CSSProperties}
+      >
         {children}
       </div>
     </CRMContext.Provider>

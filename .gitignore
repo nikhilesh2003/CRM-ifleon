@@ -28,5 +28,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# deployment archives
+*.tar.gz
+*.log
+
 # typescript
 *.tsbuildinfo
