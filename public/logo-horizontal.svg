@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 90" fill="none">
+  <!-- iF Icon -->
+  <g transform="translate(10, 10)">
+    <!-- 'i' mark -->
+    <rect x="0" y="0" width="14" height="14" rx="2.5" fill="#1E293B"/>
+    <rect x="0" y="19" width="14" height="41" rx="2.5" fill="#1E293B"/>
+    
+    <!-- 'F' mark -->
+    <rect x="20" y="0" width="14" height="60" rx="2.5" fill="#2563EB"/>
+    <rect x="34" y="0" width="20" height="14" rx="2.5" fill="#2563EB"/>
+    <!-- accent pixel -->
+    <rect x="58" y="0" width="11" height="11" rx="2" fill="#38BDF8"/>
+    <rect x="34" y="23" width="16" height="13" rx="2.5" fill="#2563EB"/>
+  </g>
+  
+  <!-- IFLEON Typography -->
+  <text x="96" y="48" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="34" font-weight="800" letter-spacing="1.5" fill="#0F172A">IFLEON</text>
+  
+  <!-- Tagline -->
+  <text x="96" y="68" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="10.5" font-weight="500" letter-spacing="0.4" fill="#64748B">Intelligent Frameworks. Powerful Execution.</text>
+</svg>

@@ -1,0 +1,696 @@
+{
+  "users": [
+    {
+      "id": "user-admin",
+      "name": "Rajesh Kumar",
+      "email": "admin@ifleon.com",
+      "role": "admin",
+      "phone": "+91 98480 11223",
+      "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
+      "disabled": false,
+      "createdAt": "2026-01-10T10:00:00Z"
+    },
+    {
+      "id": "user-manager",
+      "name": "Priya Sharma",
+      "email": "manager@ifleon.com",
+      "role": "manager",
+      "phone": "+91 98480 22334",
+      "avatar": "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150",
+      "disabled": false,
+      "createdAt": "2026-01-15T11:00:00Z"
+    },
+    {
+      "id": "user-nikhil",
+      "name": "Nikhil Varma",
+      "email": "consultant@ifleon.com",
+      "role": "consultant",
+      "phone": "+91 98480 33445",
+      "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
+      "disabled": false,
+      "createdAt": "2026-02-01T09:30:00Z"
+    },
+    {
+      "id": "user-arun",
+      "name": "Arun Patel",
+      "email": "arun@ifleon.com",
+      "role": "consultant",
+      "phone": "+91 98480 44556",
+      "avatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150",
+      "disabled": false,
+      "createdAt": "2026-02-15T09:30:00Z"
+    }
+  ],
+  "projects": [
+    {
+      "id": "proj-1",
+      "name": "South India Pre-Owned Dealerships 2026",
+      "clientOrCampaign": "Q4 Automobile Dealers Outreach",
+      "description": "Targeting top multi-brand pre-owned dealerships across Andhra Pradesh, Telangana and Tamil Nadu.",
+      "assignedConsultantIds": [
+        "user-nikhil",
+        "user-arun"
+      ],
+      "createdById": "user-manager",
+      "status": "active",
+      "createdAt": "2026-09-01T10:00:00Z"
+    },
+    {
+      "id": "proj-2",
+      "name": "Hyderabad Automotive Hub Campaign",
+      "clientOrCampaign": "Hyderabad & Secunderabad Luxury Pre-Owned",
+      "description": "Dedicated campaign for premium used car showrooms in Madhapur, Jubilee Hills, and Gachibowli.",
+      "assignedConsultantIds": [
+        "user-nikhil"
+      ],
+      "createdById": "user-admin",
+      "status": "active",
+      "createdAt": "2026-09-15T10:00:00Z"
+    }
+  ],
+  "leads": [
+    {
+      "id": "lead-1",
+      "projectId": "proj-1",
+      "projectName": "South India Pre-Owned Dealerships 2026",
+      "contactPerson": "Suresh Reddy",
+      "phone": "+91 94401 23456",
+      "businessName": "Sri Sai Elite Cars",
+      "location": "Nellore, Trunk Road",
+      "status": "Won",
+      "followUpDate": "2026-10-10",
+      "leadSource": "Referral",
+      "notes": "Premier dealer in Nellore with 60+ pre-owned cars. Signed deal for full package. Wants launch before Diwali.",
+      "consultantId": "user-nikhil",
+      "consultantName": "Nikhil Varma",
+      "managerReview": "Approved",
+      "managerComment": "Deal verified. Advance received via bank transfer.",
+      "finalDealAmount": 95000,
+      "expectedCloseDate": "2026-10-10",
+      "startDate": "2026-10-12",
+      "tags": [
+        "High Value",
+        "Nellore",
+        "Pre-Owned",
+        "Hot Lead"
+      ],
+      "attachments": [
+        {
+          "id": "att-1",
+          "name": "SriSai_Showroom_Photos.zip",
+          "size": "4.2 MB",
+          "url": "#",
+          "type": "application/zip",
+          "uploadedAt": "2026-10-05T12:00:00Z"
+        }
+      ],
+      "createdAt": "2026-09-20T10:00:00Z",
+      "updatedAt": "2026-10-10T15:30:00Z",
+      "updatedBy": "Priya Sharma (Manager)"
+    },
+    {
+      "id": "lead-2",
+      "projectId": "proj-2",
+      "projectName": "Hyderabad Automotive Hub Campaign",
+      "contactPerson": "Vikram Choudhury",
+      "phone": "+91 98490 87654",
+      "businessName": "Royal Wheels Pre-Owned",
+      "location": "Hyderabad, Madhapur",
+      "status": "Proposal sent / Negotiation",
+      "followUpDate": "2026-10-13",
+      "leadSource": "Cold Outreach",
+      "notes": "Met owner Vikram. Keen on WhatsApp test-drive bookings and EMI calculator. Quotation sent for ₹1,10,000. Follow up today for sign-off.",
+      "consultantId": "user-nikhil",
+      "consultantName": "Nikhil Varma",
+      "managerReview": "Approved",
+      "managerComment": "Quotation IFL-Q-2026-0001 reviewed and approved for delivery.",
+      "finalDealAmount": null,
+      "expectedCloseDate": "2026-10-18",
+      "tags": [
+        "Luxury Cars",
+        "Hyderabad",
+        "Negotiation"
+      ],
+      "attachments": [],
+      "createdAt": "2026-09-25T11:00:00Z",
+      "updatedAt": "2026-10-11T16:00:00Z",
+      "updatedBy": "Nikhil Varma (Consultant)"
+    },
+    {
+      "id": "lead-3",
+      "projectId": "proj-1",
+      "projectName": "South India Pre-Owned Dealerships 2026",
+      "contactPerson": "K. Venkat Rao",
+      "phone": "+91 97000 55443",
+      "businessName": "Deccan Auto Hub",
+      "location": "Vijayawada, Benz Circle",
+      "status": "Interested / Follow-up",
+      "followUpDate": "2026-10-14",
+      "leadSource": "Inbound Web",
+      "notes": "Submitted enquiry through landing page. Has 45 cars inventory, currently posting only on Instagram and Olx. Wants their own branded portal.",
+      "consultantId": "user-arun",
+      "consultantName": "Arun Patel",
+      "managerReview": "Pending",
+      "managerComment": "",
+      "finalDealAmount": null,
+      "expectedCloseDate": "2026-10-25",
+      "tags": [
+        "Vijayawada",
+        "Inbound"
+      ],
+      "attachments": [],
+      "createdAt": "2026-10-02T14:30:00Z",
+      "updatedAt": "2026-10-08T09:00:00Z",
+      "updatedBy": "Arun Patel (Consultant)"
+    },
+    {
+      "id": "lead-4",
+      "projectId": "proj-1",
+      "projectName": "South India Pre-Owned Dealerships 2026",
+      "contactPerson": "Dinesh Balaji",
+      "phone": "+91 94440 12890",
+      "businessName": "Metro Car Gallery",
+      "location": "Chennai, Anna Nagar",
+      "status": "Lost",
+      "followUpDate": "2026-09-30",
+      "leadSource": "Event/Exhibition",
+      "notes": "Client decided to go with a local WordPress freelancer due to immediate low initial quote.",
+      "consultantId": "user-arun",
+      "consultantName": "Arun Patel",
+      "managerReview": "Approved",
+      "managerComment": "Lost reason recorded: Competitor chosen (price sensitive).",
+      "lostReason": "Competitor chosen",
+      "finalDealAmount": null,
+      "expectedCloseDate": "2026-09-30",
+      "tags": [
+        "Chennai",
+        "Lost"
+      ],
+      "attachments": [],
+      "createdAt": "2026-09-10T12:00:00Z",
+      "updatedAt": "2026-09-30T17:00:00Z",
+      "updatedBy": "Priya Sharma (Manager)"
+    },
+    {
+      "id": "lead-5",
+      "projectId": "proj-2",
+      "projectName": "Hyderabad Automotive Hub Campaign",
+      "contactPerson": "Anand Mohan",
+      "phone": "+91 91210 99887",
+      "businessName": "Apex Motor Galleria",
+      "location": "Secunderabad, Bowenpally",
+      "status": "New / Contacted",
+      "followUpDate": "2026-10-13",
+      "leadSource": "Social Media",
+      "notes": "First call done. They are expanding to a second showroom. Asked for quotation and sample car dealer demo link.",
+      "consultantId": "user-nikhil",
+      "consultantName": "Nikhil Varma",
+      "managerReview": "Approved",
+      "managerComment": "",
+      "finalDealAmount": null,
+      "expectedCloseDate": "2026-11-05",
+      "tags": [
+        "Hyderabad",
+        "New Lead"
+      ],
+      "attachments": [],
+      "createdAt": "2026-10-11T16:00:00Z",
+      "updatedAt": "2026-10-13T06:28:21.971Z",
+      "updatedBy": "Priya Sharma (manager)",
+      "currentUser": {
+        "id": "user-manager",
+        "name": "Priya Sharma",
+        "email": "manager@ifleon.com",
+        "role": "manager",
+        "phone": "+91 98480 22334",
+        "avatar": "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150",
+        "disabled": false,
+        "createdAt": "2026-01-15T11:00:00Z"
+      }
+    }
+  ],
+  "meetings": [
+    {
+      "id": "meet-1",
+      "leadId": "lead-2",
+      "meetingDateTime": "2026-10-09T14:30:00Z",
+      "type": "Visit",
+      "attendees": "Vikram Choudhury (Owner), Rohit (Sales Head), Nikhil Varma (iFleon)",
+      "minutes": "Demonstrated live demo of car inventory filtering and WhatsApp enquiry popup. Client loved the test-drive booking widget. Discussed budget of approx ₹1.1 Lakhs. Requested formal quotation by Saturday.",
+      "nextAction": "Send customized PPTX Quotation and PDF Proposal with EMI calculator breakdown",
+      "addedById": "user-nikhil",
+      "addedByName": "Nikhil Varma",
+      "createdAt": "2026-10-09T16:00:00Z"
+    },
+    {
+      "id": "meet-2",
+      "leadId": "lead-1",
+      "meetingDateTime": "2026-10-03T11:00:00Z",
+      "type": "Call",
+      "attendees": "Suresh Reddy, Nikhil Varma",
+      "minutes": "Discussed requirements for Nellore pre-owned car inventory. Emphasized need for quick photo upload from mobile phone and WhatsApp direct lead forwarding. Confirmed final package.",
+      "nextAction": "Receive 50% advance check and issue onboarding checklist",
+      "addedById": "user-nikhil",
+      "addedByName": "Nikhil Varma",
+      "createdAt": "2026-10-03T12:00:00Z"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "task-1",
+      "leadId": "lead-2",
+      "leadBusinessName": "Royal Wheels Pre-Owned",
+      "consultantId": "user-nikhil",
+      "title": "Follow up call on Quotation IFL-Q-2026-0001 with Vikram",
+      "dueDate": "2026-10-13",
+      "completed": false,
+      "priority": "high",
+      "createdAt": "2026-10-10T10:00:00Z"
+    },
+    {
+      "id": "task-2",
+      "leadId": "lead-5",
+      "leadBusinessName": "Apex Motor Galleria",
+      "consultantId": "user-nikhil",
+      "title": "Send car showroom portfolio link and brochure via WhatsApp",
+      "dueDate": "2026-10-13",
+      "completed": false,
+      "priority": "medium",
+      "createdAt": "2026-10-11T16:30:00Z"
+    },
+    {
+      "id": "task-3",
+      "leadId": "lead-3",
+      "leadBusinessName": "Deccan Auto Hub",
+      "consultantId": "user-arun",
+      "title": "Schedule Zoom demo with Venkat Rao",
+      "dueDate": "2026-10-14",
+      "completed": false,
+      "priority": "medium",
+      "createdAt": "2026-10-08T11:00:00Z"
+    }
+  ],
+  "scopeModules": [
+    {
+      "id": "mod-1",
+      "name": "Car inventory",
+      "description": "Each car holds make, model, variant, year, price, kilometres, fuel, transmission, owners, colour, registration state, insurance validity, photos and status (Available, Booked, Sold).",
+      "category": "Core Features",
+      "defaultPrice": 28000
+    },
+    {
+      "id": "mod-2",
+      "name": "Search and filters",
+      "description": "Visitors filter by brand, price range, year, fuel type and transmission with instant multi-facet results.",
+      "category": "Discovery",
+      "defaultPrice": 12000
+    },
+    {
+      "id": "mod-3",
+      "name": "Car detail page",
+      "description": "Photo gallery, high-res zoom, full specifications table, price breakdown, direct Call and WhatsApp buttons, shareable link.",
+      "category": "Product Page",
+      "defaultPrice": 16000
+    },
+    {
+      "id": "mod-4",
+      "name": "Enquiry and test drive form",
+      "description": "Customer name, phone, chosen car and preferred test drive slot, auto-routed to dealer sales team.",
+      "category": "Lead Capture",
+      "defaultPrice": 10000
+    },
+    {
+      "id": "mod-5",
+      "name": "EMI calculator",
+      "description": "Interactive monthly instalment calculation from price, down payment, interest rate and loan tenure.",
+      "category": "Finance Tools",
+      "defaultPrice": 9000
+    },
+    {
+      "id": "mod-6",
+      "name": "Sell or exchange your car",
+      "description": "Form where visitors describe the car they want to sell or exchange with photo upload and instant quotation request.",
+      "category": "Customer Exchange",
+      "defaultPrice": 14000
+    },
+    {
+      "id": "mod-7",
+      "name": "Dealer pages",
+      "description": "Showroom address, interactive Google Maps location, opening hours, about us history, verified customer reviews.",
+      "category": "Company Branding",
+      "defaultPrice": 11000
+    },
+    {
+      "id": "mod-8",
+      "name": "Offers and featured cars",
+      "description": "Homepage promotional hero banners, festival discounts, and highlighted newly arrived stock badges.",
+      "category": "Marketing",
+      "defaultPrice": 9000
+    },
+    {
+      "id": "mod-9",
+      "name": "SEO and sharing",
+      "description": "Dynamic OpenGraph tags, page titles, meta descriptions, and rich WhatsApp preview cards for every vehicle.",
+      "category": "SEO & Social",
+      "defaultPrice": 11000
+    }
+  ],
+  "priceList": [
+    {
+      "id": "pl-1",
+      "name": "Pre-Owned Car Portal - Starter Bundle",
+      "category": "Packages",
+      "rate": 65000,
+      "unit": "One-time",
+      "description": "Includes Car Inventory, Search & Filters, Detail Pages, WhatsApp Leads"
+    },
+    {
+      "id": "pl-2",
+      "name": "Pre-Owned Car Portal - Pro Enterprise",
+      "category": "Packages",
+      "rate": 95000,
+      "unit": "One-time",
+      "description": "All 9 modules including EMI Calculator, Sell/Exchange Form, Dealer Hub & SEO"
+    },
+    {
+      "id": "pl-3",
+      "name": "Car Inventory & Filter System",
+      "category": "Modules",
+      "rate": 35000,
+      "unit": "Module",
+      "description": "Robust inventory management with multi-criteria filters"
+    },
+    {
+      "id": "pl-4",
+      "name": "EMI Calculator & Financing Widget",
+      "category": "Modules",
+      "rate": 10000,
+      "unit": "Module",
+      "description": "Loan calculation widget with bank partner integrations"
+    },
+    {
+      "id": "pl-5",
+      "name": "Sell / Exchange Vehicle Flow",
+      "category": "Modules",
+      "rate": 15000,
+      "unit": "Module",
+      "description": "Two-way lead capture for customer vehicle trade-ins"
+    },
+    {
+      "id": "pl-6",
+      "name": "Cloud Hosting & Domain Setup (1 Year)",
+      "category": "Infrastructure",
+      "rate": 14000,
+      "unit": "Annual",
+      "description": "High-speed cloud servers with SSL certificate and daily backups"
+    },
+    {
+      "id": "pl-7",
+      "name": "Annual Support & Maintenance SLA",
+      "category": "Support",
+      "rate": 18000,
+      "unit": "Annual",
+      "description": "Priority bug fixes, monthly updates, and technical assistance"
+    }
+  ],
+  "documents": [
+    {
+      "id": "doc-1791873065612",
+      "type": "quotation",
+      "docNumber": "IFL-Q-2026-0002",
+      "leadId": "lead-1",
+      "businessName": "Sri Sai Elite Cars",
+      "contactPerson": "Suresh Reddy",
+      "phone": "+91 94401 23456",
+      "location": "Nellore, Trunk Road",
+      "consultantId": "user-nikhil",
+      "consultantName": "Nikhil Varma",
+      "version": 1,
+      "date": "2026-10-13",
+      "validUntilDate": "2026-10-28",
+      "projectSummary": "Design, engineering, and deployment of a state-of-the-art web portal for Sri Sai Elite Cars, empowering digital car merchandising, live stock discovery, and automated WhatsApp buyer leads.",
+      "selectedModules": [
+        "Car inventory",
+        "Search and filters",
+        "Car detail page",
+        "Enquiry and test drive form",
+        "EMI calculator"
+      ],
+      "lineItems": [
+        {
+          "id": "li-default-1",
+          "moduleOrItem": "Pre-Owned Car Portal - Core Engine",
+          "description": "Complete inventory database, multi-facet search & high-res car gallery",
+          "qty": 1,
+          "rate": 65000,
+          "amount": 65000
+        }
+      ],
+      "subtotal": 65000,
+      "discount": 0,
+      "total": 65000,
+      "paymentTerms": "50% advance on sign-off, 30% upon staging demo approval, 20% on final domain launch.",
+      "timeline": "3 to 4 weeks delivery from design sign-off.",
+      "termsAndConditions": "Validity: 15 days from issue date. Includes 2 design revisions and 30 days post-launch warranty.",
+      "executiveSummary": "In today's fast-moving automotive market, premium pre-owned dealerships need a high-converting digital presence that builds customer trust and accelerates vehicle inventory turnover. iFleon provides an end-to-end engineered web solution tailored specifically for Sri Sai Elite Cars, connecting buyers directly to your showroom.",
+      "understandingOfNeeds": "Based on discussions with Suresh Reddy, Sri Sai Elite Cars requires a lightning-fast catalog with advanced filtering by brand, price, and fuel type, combined with frictionless WhatsApp test-drive scheduling and financing calculators to convert online visitors into showroom walk-ins.",
+      "proposedSolution": "A responsive, high-performance web platform built on modern cloud architecture, incorporating 5 core modules including searchable vehicle inventory, dynamic EMI calculators, and lead management integrations.",
+      "assumptionsAndExclusions": "Client provides car vehicle inventory images and dealer credentials.",
+      "supportAndMaintenance": "30 days hypercare included. Annual maintenance contracts available.",
+      "status": "Draft",
+      "requiresManagerApproval": false,
+      "createdAt": "2026-10-13T06:31:05.612Z"
+    },
+    {
+      "id": "doc-1",
+      "type": "quotation",
+      "docNumber": "IFL-Q-2026-0001",
+      "leadId": "lead-2",
+      "businessName": "Royal Wheels Pre-Owned",
+      "contactPerson": "Vikram Choudhury",
+      "phone": "+91 98490 87654",
+      "location": "Hyderabad, Madhapur",
+      "consultantId": "user-nikhil",
+      "consultantName": "Nikhil Varma",
+      "version": 1,
+      "date": "2026-10-10",
+      "validUntilDate": "2026-10-25",
+      "projectSummary": "Custom responsive web portal tailored for Royal Wheels Pre-Owned luxury automobile inventory, featuring smart multi-criteria search, instant WhatsApp test drive lead routing, and an interactive EMI calculator.",
+      "selectedModules": [
+        "Car inventory",
+        "Search and filters",
+        "Car detail page",
+        "Enquiry and test drive form",
+        "EMI calculator",
+        "Sell or exchange your car",
+        "SEO and sharing"
+      ],
+      "lineItems": [
+        {
+          "id": "li-1",
+          "moduleOrItem": "Pre-Owned Car Portal - Core Engine",
+          "description": "Complete inventory database, multi-facet search & high-res car gallery",
+          "qty": 1,
+          "rate": 65000,
+          "amount": 65000
+        },
+        {
+          "id": "li-2",
+          "moduleOrItem": "EMI Calculator & Financing Widget",
+          "description": "Live EMI breakdown from vehicle pricing with tenure selector",
+          "qty": 1,
+          "rate": 10000,
+          "amount": 10000
+        },
+        {
+          "id": "li-3",
+          "moduleOrItem": "Sell / Exchange Vehicle Flow",
+          "description": "Customer valuation and trade-in intake system",
+          "qty": 1,
+          "rate": 15000,
+          "amount": 15000
+        },
+        {
+          "id": "li-4",
+          "moduleOrItem": "Cloud Infrastructure & High-Speed Hosting",
+          "description": "1 Year cloud server, SSL, daily backups & CDN",
+          "qty": 1,
+          "rate": 15000,
+          "amount": 15000
+        },
+        {
+          "id": "li-5",
+          "moduleOrItem": "SEO & WhatsApp Direct Routing",
+          "description": "Rich vehicle social cards and automated salesperson alerts",
+          "qty": 1,
+          "rate": 10000,
+          "amount": 10000
+        }
+      ],
+      "subtotal": 115000,
+      "discount": 5000,
+      "total": 110000,
+      "paymentTerms": "50% advance on sign-off, 30% upon staging demo approval, 20% on final domain launch.",
+      "timeline": "3 to 4 weeks from sign-off and receipt of initial car photos/details.",
+      "termsAndConditions": "Validity: 15 days from issue date. Includes 2 revision rounds and 30 days post-launch warranty.",
+      "status": "Sent",
+      "requiresManagerApproval": true,
+      "approvedBy": "Priya Sharma (Manager)",
+      "createdAt": "2026-10-10T12:00:00Z"
+    }
+  ],
+  "aiProviders": [
+    {
+      "id": "prov-groq",
+      "name": "Groq (Ultra-Fast Llama 3.3)",
+      "baseUrl": "https://api.groq.com/openai/v1",
+      "model": "llama-3.3-70b-versatile",
+      "apiKey": "",
+      "priority": 1,
+      "enabled": true
+    },
+    {
+      "id": "prov-openrouter",
+      "name": "OpenRouter (Free Multi-Model)",
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "model": "meta-llama/llama-3.3-70b-instruct:free",
+      "apiKey": "",
+      "priority": 2,
+      "enabled": true
+    },
+    {
+      "id": "prov-gemini",
+      "name": "Google Gemini (API)",
+      "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai/",
+      "model": "gemini-1.5-flash",
+      "apiKey": "",
+      "priority": 3,
+      "enabled": true
+    },
+    {
+      "id": "prov-ollama",
+      "name": "Local Ollama (Self-Hosted)",
+      "baseUrl": "http://localhost:11434/v1",
+      "model": "llama3:latest",
+      "apiKey": "local",
+      "priority": 4,
+      "enabled": false
+    }
+  ],
+  "auditLogs": [
+    {
+      "id": "aud-1791873065814-77e8",
+      "timestamp": "2026-10-13T06:31:05.814Z",
+      "userId": "user-manager",
+      "userName": "Priya Sharma",
+      "userRole": "manager",
+      "action": "Created Quotation",
+      "entityType": "Quotation",
+      "entityId": "doc-1791873065612",
+      "entityName": "IFL-Q-2026-0002 (Sri Sai Elite Cars)",
+      "details": "Generated document with total ₹65,000. Status: Draft."
+    },
+    {
+      "id": "aud-1791872901969-7hym",
+      "timestamp": "2026-10-13T06:28:21.969Z",
+      "userId": "user-manager",
+      "userName": "Priya Sharma",
+      "userRole": "manager",
+      "action": "Manager Review: Approved",
+      "entityType": "Lead",
+      "entityId": "lead-5",
+      "entityName": "Apex Motor Galleria",
+      "details": "Manager feedback: No comments"
+    },
+    {
+      "id": "aud-1",
+      "timestamp": "2026-10-10T15:30:00Z",
+      "userId": "user-manager",
+      "userName": "Priya Sharma",
+      "userRole": "manager",
+      "action": "Approved Lead Status",
+      "entityType": "Lead",
+      "entityId": "lead-1",
+      "entityName": "Sri Sai Elite Cars",
+      "details": "Approved Won status change. Deal amount: ₹95,000."
+    },
+    {
+      "id": "aud-2",
+      "timestamp": "2026-10-10T12:00:00Z",
+      "userId": "user-manager",
+      "userName": "Priya Sharma",
+      "userRole": "manager",
+      "action": "Approved Quotation",
+      "entityType": "Quotation",
+      "entityId": "doc-1",
+      "entityName": "IFL-Q-2026-0001 (Royal Wheels Pre-Owned)",
+      "details": "Quotation of ₹1,10,000 exceeded threshold ₹1,00,000 and was approved for dispatch."
+    },
+    {
+      "id": "aud-3",
+      "timestamp": "2026-10-09T16:00:00Z",
+      "userId": "user-nikhil",
+      "userName": "Nikhil Varma",
+      "userRole": "consultant",
+      "action": "Logged Meeting Notes",
+      "entityType": "Meeting",
+      "entityId": "meet-1",
+      "entityName": "Royal Wheels Pre-Owned",
+      "details": "Client visit recorded with 3 attendees and next action defined."
+    }
+  ],
+  "settings": {
+    "name": "iFleon",
+    "tagline": "Intelligent Frameworks. Powerful Execution.",
+    "address": "Trunk Road Commercial Center",
+    "cityState": "Nellore, Andhra Pradesh, India - 524001",
+    "phone": "+91 94900 12345",
+    "email": "contact@ifleon.com",
+    "website": "https://ifleon.com",
+    "quotationApprovalThreshold": 100000,
+    "horizontalLogoUrl": "/logo-horizontal.png",
+    "iconLogoUrl": "/logo-icon.png"
+  },
+  "themes": [
+    {
+      "id": "theme-default",
+      "name": "iFleon Sapphire (Default)",
+      "primaryColor": "#2563eb",
+      "primaryHover": "#1d4ed8",
+      "secondaryColor": "#0ea5e9",
+      "accentColor": "#38bdf8",
+      "backgroundColor": "#0f172a",
+      "cardBackground": "#1e293b",
+      "textColor": "#f8fafc",
+      "borderRadius": "0.625rem",
+      "isDark": true
+    },
+    {
+      "id": "theme-emerald",
+      "name": "Executive Emerald",
+      "primaryColor": "#059669",
+      "primaryHover": "#047857",
+      "secondaryColor": "#10b981",
+      "accentColor": "#34d399",
+      "backgroundColor": "#064e3b",
+      "cardBackground": "#065f46",
+      "textColor": "#f0fdf4",
+      "borderRadius": "0.5rem",
+      "isDark": true
+    },
+    {
+      "id": "theme-light",
+      "name": "Clean Studio Light",
+      "primaryColor": "#1d4ed8",
+      "primaryHover": "#1e40af",
+      "secondaryColor": "#0284c7",
+      "accentColor": "#0ea5e9",
+      "backgroundColor": "#f8fafc",
+      "cardBackground": "#ffffff",
+      "textColor": "#0f172a",
+      "borderRadius": "0.75rem",
+      "isDark": false
+    }
+  ],
+  "activeThemeId": "theme-default"
+}
