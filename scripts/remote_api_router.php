@@ -582,5 +582,398 @@ if ($resource === 'ai') {
     exit;
 }
 
+// 9. /api/email
+function send_smtp_socket($host, $port, $user, $pass, $fromEmail, $fromName, $toEmail, $subject, $htmlContent) {
+    $timeout = 10;
+    $isSsl = ($port == 465);
+    $transport = $isSsl ? "ssl://{$host}" : "tcp://{$host}";
+    
+    $socket = @stream_socket_client("{$transport}:{$port}", $errno, $errstr, $timeout);
+    if (!$socket) {
+        return ['success' => false, 'error' => "Socket connection to {$host}:{$port} failed: {$errstr} ({$errno})"];
+    }
+    
+    stream_set_timeout($socket, $timeout);
+    $response = fgets($socket, 512);
+    if (substr($response, 0, 3) !== '220') {
+        fclose($socket);
+        return ['success' => false, 'error' => "SMTP greeting failed: {$response}"];
+    }
+
+    fputs($socket, "EHLO ifleon.com\r\n");
+    $ehloResp = '';
+    while ($line = fgets($socket, 512)) {
+        $ehloResp .= $line;
+        if (substr($line, 3, 1) === ' ') break;
+    }
+
+    if (!$isSsl && (strpos($ehloResp, 'STARTTLS') !== false || $port == 587)) {
+        fputs($socket, "STARTTLS\r\n");
+        $tlsResp = fgets($socket, 512);
+        if (substr($tlsResp, 0, 3) === '220') {
+            if (!@stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
+                fclose($socket);
+                return ['success' => false, 'error' => 'STARTTLS handshake failed'];
+            }
+            fputs($socket, "EHLO ifleon.com\r\n");
+            while ($line = fgets($socket, 512)) {
+                if (substr($line, 3, 1) === ' ') break;
+            }
+        }
+    }
+
+    fputs($socket, "AUTH LOGIN\r\n");
+    $authResp = fgets($socket, 512);
+    if (substr($authResp, 0, 3) !== '334') {
+        fclose($socket);
+        return ['success' => false, 'error' => "AUTH LOGIN rejected: {$authResp}"];
+    }
+
+    fputs($socket, base64_encode($user) . "\r\n");
+    $uResp = fgets($socket, 512);
+    if (substr($uResp, 0, 3) !== '334') {
+        fclose($socket);
+        return ['success' => false, 'error' => "User rejected: {$uResp}"];
+    }
+
+    fputs($socket, base64_encode($pass) . "\r\n");
+    $pResp = fgets($socket, 512);
+    if (substr($pResp, 0, 3) !== '235') {
+        fclose($socket);
+        return ['success' => false, 'error' => "SMTP Authentication failed: {$pResp}"];
+    }
+
+    fputs($socket, "MAIL FROM:<{$fromEmail}>\r\n");
+    $mfResp = fgets($socket, 512);
+    if (substr($mfResp, 0, 3) !== '250') {
+        fclose($socket);
+        return ['success' => false, 'error' => "MAIL FROM rejected: {$mfResp}"];
+    }
+
+    fputs($socket, "RCPT TO:<{$toEmail}>\r\n");
+    $rcptResp = fgets($socket, 512);
+    if (substr($rcptResp, 0, 3) !== '250') {
+        fclose($socket);
+        return ['success' => false, 'error' => "RCPT TO rejected: {$rcptResp}"];
+    }
+
+    fputs($socket, "DATA\r\n");
+    $dataResp = fgets($socket, 512);
+    if (substr($dataResp, 0, 3) !== '354') {
+        fclose($socket);
+        return ['success' => false, 'error' => "DATA rejected: {$dataResp}"];
+    }
+
+    $msg = "MIME-Version: 1.0\r\n";
+    $msg .= "Content-Type: text/html; charset=UTF-8\r\n";
+    $msg .= "From: =?UTF-8?B?" . base64_encode($fromName) . "?= <{$fromEmail}>\r\n";
+    $msg .= "To: <{$toEmail}>\r\n";
+    $msg .= "Subject: =?UTF-8?B?" . base64_encode($subject) . "?=\r\n";
+    $msg .= "Date: " . date('r') . "\r\n";
+    $msg .= "X-Mailer: iFleon-CRM-Hostinger/1.0\r\n\r\n";
+    $msg .= $htmlContent . "\r\n.\r\n";
+
+    fputs($socket, $msg);
+    $sendResp = fgets($socket, 512);
+    fputs($socket, "QUIT\r\n");
+    fclose($socket);
+
+    if (substr($sendResp, 0, 3) === '250') {
+        return ['success' => true, 'transport' => 'Hostinger SMTP Direct (' . ($isSsl ? 'SSL 465' : 'TLS') . ')', 'response' => trim($sendResp)];
+    } else {
+        return ['success' => false, 'error' => "SMTP message send error: {$sendResp}"];
+    }
+}
+
+function send_elastic_email($apiKey, $fromEmail, $fromName, $toEmail, $subject, $htmlContent) {
+    $url = 'https://api.elasticemail.com/v2/email/send';
+    $postData = http_build_query([
+        'apikey' => $apiKey,
+        'from' => $fromEmail,
+        'fromName' => $fromName,
+        'to' => $toEmail,
+        'subject' => $subject,
+        'bodyHtml' => $htmlContent,
+        'isTransactional' => true,
+    ]);
+    
+    $opts = [
+        'http' => [
+            'method' => 'POST',
+            'header' => "Content-Type: application/x-www-form-urlencoded\r\n",
+            'content' => $postData,
+            'timeout' => 15,
+            'ignore_errors' => true,
+        ]
+    ];
+    $ctx = stream_context_create($opts);
+    $res = @file_get_contents($url, false, $ctx);
+    if ($res === false) {
+        return ['success' => false, 'error' => 'ElasticEmail HTTP connection failed'];
+    }
+    $json = json_decode($res, true);
+    if (!empty($json['success'])) {
+        return ['success' => true, 'transport' => 'ElasticEmail API v2', 'transactionId' => $json['data']['transactionid'] ?? ''];
+    } else {
+        return ['success' => false, 'error' => $json['error'] ?? 'ElasticEmail error'];
+    }
+}
+
+function send_brevo_email($apiKey, $fromEmail, $fromName, $toEmail, $subject, $htmlContent) {
+    $url = 'https://api.brevo.com/v3/smtp/email';
+    $payload = json_encode([
+        'sender' => ['name' => $fromName, 'email' => $fromEmail],
+        'to' => [['email' => $toEmail]],
+        'subject' => $subject,
+        'htmlContent' => $htmlContent,
+    ]);
+    $opts = [
+        'http' => [
+            'method' => 'POST',
+            'header' => "Content-Type: application/json\r\napi-key: {$apiKey}\r\n",
+            'content' => $payload,
+            'timeout' => 15,
+            'ignore_errors' => true,
+        ]
+    ];
+    $ctx = stream_context_create($opts);
+    $res = @file_get_contents($url, false, $ctx);
+    if ($res === false) {
+        return ['success' => false, 'error' => 'Brevo HTTP request failed'];
+    }
+    $json = json_decode($res, true);
+    if (!empty($json['messageId'])) {
+        return ['success' => true, 'transport' => 'Brevo API v3', 'messageId' => $json['messageId']];
+    } else {
+        return ['success' => false, 'error' => $json['message'] ?? 'Brevo error'];
+    }
+}
+
+function send_native_php_mail($fromEmail, $fromName, $toEmail, $subject, $htmlContent) {
+    $encodedSubject = "=?UTF-8?B?" . base64_encode($subject) . "?=";
+    $headers = [
+        'MIME-Version: 1.0',
+        'Content-Type: text/html; charset=UTF-8',
+        'From: ' . "=?UTF-8?B?" . base64_encode($fromName) . "?= <{$fromEmail}>",
+        'Reply-To: ' . $fromEmail,
+        'X-Mailer: iFleon-CRM-Hostinger-MTA/1.0',
+    ];
+    $headerStr = implode("\r\n", $headers);
+    $sent = @mail($toEmail, $encodedSubject, $htmlContent, $headerStr, "-f{$fromEmail}");
+    if (!$sent) {
+        $sent = @mail($toEmail, $encodedSubject, $htmlContent, $headerStr);
+    }
+    if ($sent) {
+        return ['success' => true, 'transport' => 'Hostinger Native MTA (lsphp mail)'];
+    } else {
+        return ['success' => false, 'error' => 'PHP mail() dispatch failed'];
+    }
+}
+
+function send_crm_email($to, $subject, $htmlContent, $cfg) {
+    $provider = $cfg['provider'] ?? 'hostinger_smtp';
+    $senderEmail = $cfg['senderEmail'] ?? 'contact@ifleon.com';
+    $senderName = $cfg['senderName'] ?? 'iFleon Corporate CRM';
+    $apiKey = $cfg['apiKey'] ?? '';
+    $smtpHost = $cfg['smtpHost'] ?? 'smtp.hostinger.com';
+    $smtpPort = intval($cfg['smtpPort'] ?? 465);
+    $smtpUser = $cfg['smtpUser'] ?? $senderEmail;
+    $smtpPass = $cfg['smtpPass'] ?? $apiKey;
+
+    $res = null;
+
+    if ($provider === 'elasticemail' && !empty($apiKey)) {
+        $res = send_elastic_email($apiKey, $senderEmail, $senderName, $to, $subject, $htmlContent);
+    } elseif ($provider === 'brevo' && !empty($apiKey)) {
+        $res = send_brevo_email($apiKey, $senderEmail, $senderName, $to, $subject, $htmlContent);
+    } elseif (($provider === 'hostinger_smtp' || $provider === 'custom_smtp') && !empty($smtpHost) && !empty($smtpPass)) {
+        $res = send_smtp_socket($smtpHost, $smtpPort, $smtpUser, $smtpPass, $senderEmail, $senderName, $to, $subject, $htmlContent);
+    } elseif ($provider === 'native_mail') {
+        $res = send_native_php_mail($senderEmail, $senderName, $to, $subject, $htmlContent);
+    }
+
+    // Auto-fallback to Hostinger Native MTA if primary method produces an error or connection failure
+    if (!$res || empty($res['success'])) {
+        $primaryError = $res['error'] ?? 'Primary transport connection unavailable';
+        $fallbackRes = send_native_php_mail($senderEmail, $senderName, $to, $subject, $htmlContent);
+        if ($fallbackRes['success']) {
+            return [
+                'success' => true,
+                'transport' => $fallbackRes['transport'] . ' (Auto-Fallback)',
+                'fallbackNotice' => "Primary method ({$provider}) reported: {$primaryError}. Delivered via Hostinger Native Mail Engine."
+            ];
+        } else {
+            return [
+                'success' => false,
+                'error' => "Primary ({$provider}): {$primaryError} | Fallback (Hostinger MTA): " . ($fallbackRes['error'] ?? 'Failed')
+            ];
+        }
+    }
+
+    return $res;
+}
+
+function get_email_template($title, $bodyHtml, $metaDetails = []) {
+    $rows = '';
+    foreach ($metaDetails as $k => $v) {
+        $rows .= "<tr><td style='padding:8px 12px;font-weight:600;color:#475569;font-size:12px;border-bottom:1px solid #e2e8f0;'>{$k}</td><td style='padding:8px 12px;color:#0f172a;font-family:monospace;font-size:12px;border-bottom:1px solid #e2e8f0;'>{$v}</td></tr>";
+    }
+    $metaTable = !empty($rows) ? "<table style='width:100%;border-collapse:collapse;margin-top:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;'>{$rows}</table>" : '';
+
+    return "<!DOCTYPE html>
+<html>
+<head>
+<meta charset='utf-8'>
+<style>body{margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1e293b;}</style>
+</head>
+<body style='margin:0;padding:24px;background-color:#f1f5f9;'>
+  <div style='max-width:620px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.06);'>
+    <div style='background:#1e3a8a;padding:20px 24px;border-bottom:3px solid #3b82f6;'>
+      <table style='width:100%;border-collapse:collapse;'>
+        <tr>
+          <td>
+            <div style='font-size:22px;font-weight:800;color:#ffffff;letter-spacing:1px;font-family:sans-serif;'>IFLEON</div>
+            <div style='font-size:11px;color:#93c5fd;font-weight:600;margin-top:2px;letter-spacing:0.5px;'>INTELLIGENT FRAMEWORKS • POWERFUL EXECUTION</div>
+          </td>
+          <td style='text-align:right;'>
+            <span style='background:#172554;color:#bfdbfe;font-size:10px;font-weight:700;padding:5px 10px;border-radius:4px;text-transform:uppercase;'>Corporate CRM</span>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div style='padding:28px 24px;'>
+      <h2 style='margin-top:0;font-size:18px;font-weight:700;color:#0f172a;'>{$title}</h2>
+      <div style='font-size:14px;line-height:1.65;color:#334155;'>
+        {$bodyHtml}
+      </div>
+      {$metaTable}
+    </div>
+    <div style='background:#f8fafc;padding:18px 24px;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#64748b;'>
+      <div style='font-weight:600;color:#475569;'>iFleon Technologies • Trunk Road Commercial Center, Nellore, AP - 524001</div>
+      <div style='margin-top:4px;'>This is an automated operational notification dispatched by the iFleon CRM Outbound Gateway.</div>
+      <div style='margin-top:4px;font-family:monospace;font-size:10px;color:#94a3b8;'>crm.ifleon.com • contact@ifleon.com</div>
+    </div>
+  </div>
+</body>
+</html>";
+}
+
+if ($resource === 'email') {
+    if ($method === 'GET') {
+        $cfg = $db['settings']['emailConfig'] ?? [];
+        $maskedCfg = $cfg;
+        if (!empty($maskedCfg['apiKey'])) {
+            $maskedCfg['apiKeyMasked'] = substr($maskedCfg['apiKey'], 0, 4) . '••••••••' . substr($maskedCfg['apiKey'], -4);
+        }
+        if (!empty($maskedCfg['smtpPass'])) {
+            $maskedCfg['smtpPassMasked'] = '••••••••••••';
+        }
+        echo json_encode([
+            'config' => $maskedCfg,
+            'logs' => array_slice($db['emailLogs'] ?? [], 0, 50),
+        ]);
+        exit;
+    } elseif ($method === 'POST') {
+        $input = get_input();
+        $action = $input['action'] ?? 'send';
+
+        if ($action === 'test') {
+            $recipient = trim($input['recipient'] ?? 'contact@ifleon.com');
+            $testCfg = array_merge($db['settings']['emailConfig'] ?? [], $input['config'] ?? []);
+
+            $subject = "[Gateway Test] iFleon Corporate CRM Email Delivery Verification";
+            $body = "<p>This is a formal test verification message generated by the <strong>iFleon Enterprise CRM Email Gateway</strong>.</p>
+                     <p>If you have received this message, outbound mail delivery is operational and properly routed through your configured mail service.</p>";
+
+            $meta = [
+                'Recipient' => $recipient,
+                'Configured Provider' => strtoupper($testCfg['provider'] ?? 'HOSTINGER_SMTP'),
+                'Sender Profile' => ($testCfg['senderName'] ?? 'iFleon Corporate CRM') . ' &lt;' . ($testCfg['senderEmail'] ?? 'contact@ifleon.com') . '&gt;',
+                'Host / Gateway' => ($testCfg['smtpHost'] ?? 'smtp.hostinger.com') . ':' . ($testCfg['smtpPort'] ?? 465),
+                'Timestamp (Server)' => date('Y-m-d H:i:s T'),
+                'Dispatch Node' => $_SERVER['SERVER_NAME'] ?? 'crm.ifleon.com',
+            ];
+
+            $html = get_email_template("Email Gateway Verification", $body, $meta);
+            $sendResult = send_crm_email($recipient, $subject, $html, $testCfg);
+
+            $logEntry = [
+                'id' => 'elog-' . time(),
+                'recipient' => $recipient,
+                'subject' => $subject,
+                'type' => 'test',
+                'provider' => $testCfg['provider'] ?? 'hostinger_smtp',
+                'status' => !empty($sendResult['success']) ? 'sent' : 'failed',
+                'transport' => $sendResult['transport'] ?? '',
+                'error' => $sendResult['error'] ?? null,
+                'sentAt' => date('c'),
+            ];
+            if (!isset($db['emailLogs'])) $db['emailLogs'] = [];
+            array_unshift($db['emailLogs'], $logEntry);
+            save_db($db);
+
+            echo json_encode([
+                'success' => !empty($sendResult['success']),
+                'recipient' => $recipient,
+                'transport' => $sendResult['transport'] ?? '',
+                'fallbackNotice' => $sendResult['fallbackNotice'] ?? null,
+                'error' => $sendResult['error'] ?? null,
+                'log' => $logEntry
+            ]);
+            exit;
+        }
+
+        if ($action === 'send') {
+            $to = trim($input['to'] ?? '');
+            $subject = trim($input['subject'] ?? 'Notification from iFleon CRM');
+            $contentHtml = $input['html'] ?? nl2br(htmlspecialchars($input['message'] ?? ''));
+            $type = $input['type'] ?? 'general';
+            $title = $input['title'] ?? 'iFleon Operational Notification';
+            $meta = $input['meta'] ?? [];
+
+            if (empty($to)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Recipient email (to) is required.']);
+                exit;
+            }
+
+            $cfg = $db['settings']['emailConfig'] ?? [];
+            if (empty($cfg['enabled'])) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Email service is currently disabled in Admin Settings.']);
+                exit;
+            }
+
+            $fullHtml = get_email_template($title, $contentHtml, $meta);
+            $sendResult = send_crm_email($to, $subject, $fullHtml, $cfg);
+
+            $logEntry = [
+                'id' => 'elog-' . time(),
+                'recipient' => $to,
+                'subject' => $subject,
+                'type' => $type,
+                'provider' => $cfg['provider'] ?? 'hostinger_smtp',
+                'status' => !empty($sendResult['success']) ? 'sent' : 'failed',
+                'transport' => $sendResult['transport'] ?? '',
+                'error' => $sendResult['error'] ?? null,
+                'sentAt' => date('c'),
+            ];
+            if (!isset($db['emailLogs'])) $db['emailLogs'] = [];
+            array_unshift($db['emailLogs'], $logEntry);
+            save_db($db);
+
+            echo json_encode([
+                'success' => !empty($sendResult['success']),
+                'transport' => $sendResult['transport'] ?? '',
+                'fallbackNotice' => $sendResult['fallbackNotice'] ?? null,
+                'error' => $sendResult['error'] ?? null,
+                'log' => $logEntry,
+            ]);
+            exit;
+        }
+    }
+}
+
 // 10. Fallback
 echo json_encode(['status' => 'ok', 'resource' => $resource]);
+

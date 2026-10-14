@@ -102,13 +102,12 @@ conn.on('ready', () => {
     console.log('Uploading deploy_site.tar.gz to remote server...');
     sftp.fastPut(tarPath, remoteTar, (upErr) => {
       if (upErr) throw upErr;
-      console.log('Upload complete! Closing SFTP channel and extracting on remote server...');
-      sftp.end();
+      console.log('Upload complete! Extracting on remote server...');
 
       const cmd = [
         `cd ${remoteTargetDir}`,
         'pkill -f "entry.js" 2>/dev/null || true',
-        'rm -f crm.sock crm.log entry.js index.php runner.js server.js default.php',
+        'rm -rf wp-admin wp-includes wp-content wp-*.php index.php xmlrpc.php default.php crm.sock crm.log',
         'tar -xzf deploy_site.tar.gz',
         'rm -f deploy_site.tar.gz',
         'chmod -R 755 .',

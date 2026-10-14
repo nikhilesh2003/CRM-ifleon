@@ -3,7 +3,15 @@
 import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useCRM } from '@/context/CRMContext';
-import { CompanySettings, CRMTheme, AIProviderConfig, StandardScopeModule, PriceListItem } from '@/lib/types';
+import {
+  CompanySettings,
+  CRMTheme,
+  AIProviderConfig,
+  StandardScopeModule,
+  PriceListItem,
+  EmailConfig,
+  EmailLogEntry,
+} from '@/lib/types';
 import {
   Settings,
   Sparkles,
@@ -16,6 +24,7 @@ import {
   Plus,
   Trash2,
   Eye,
+  EyeOff,
   ArrowUp,
   ArrowDown,
   Layers,
@@ -28,6 +37,16 @@ import {
   Sun,
   Moon,
   Loader2,
+  Mail,
+  Send,
+  Key,
+  ShieldCheck,
+  Server,
+  Inbox,
+  CheckCircle2,
+  AlertTriangle,
+  RefreshCw,
+  Globe,
 } from 'lucide-react';
 
 export default function AdminSettingsWrapper() {
@@ -42,7 +61,7 @@ function AdminSettingsPage() {
   const { currentUser, settings: ctxSettings, refreshSettings, theme: activeTheme, setTheme } = useCRM();
   const searchParams = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState<'company' | 'theme' | 'ai' | 'scope' | 'price'>(
+  const [activeTab, setActiveTab] = useState<'company' | 'email' | 'theme' | 'ai' | 'scope' | 'price'>(
     (searchParams.get('tab') as any) || 'company'
   );
 
@@ -61,6 +80,31 @@ function AdminSettingsPage() {
     darkLogoUrl: '/logo-dark-horizontal.png',
     iconLogoUrl: '/logo-icon.png',
   });
+
+  // Email Configuration state
+  const [emailConfig, setEmailConfig] = useState<EmailConfig>({
+    provider: 'hostinger_smtp',
+    apiKey: 'e251b100f6be8eb4caba9e20686d5716cd0a755de99247dfea6bde9746d77e3d',
+    senderEmail: 'contact@ifleon.com',
+    senderName: 'iFleon Corporate CRM',
+    smtpHost: 'smtp.hostinger.com',
+    smtpPort: 465,
+    smtpUser: 'contact@ifleon.com',
+    smtpPass: 'e251b100f6be8eb4caba9e20686d5716cd0a755de99247dfea6bde9746d77e3d',
+    enabled: true,
+  });
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [showSmtpPass, setShowSmtpPass] = useState(false);
+  const [testRecipient, setTestRecipient] = useState('contact@ifleon.com');
+  const [sendingTest, setSendingTest] = useState(false);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    message: string;
+    transport?: string;
+    fallbackNotice?: string;
+  } | null>(null);
+  const [emailLogs, setEmailLogs] = useState<EmailLogEntry[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
 
   const [themes, setThemes] = useState<CRMTheme[]>([]);
   const [activeThemeId, setActiveThemeId] = useState('theme-default');
@@ -90,12 +134,22 @@ function AdminSettingsPage() {
           fetch('/api/admin/master-lists').then((r) => r.json()),
         ]);
 
-        if (resSettings.settings) setSettings(resSettings.settings);
+        if (resSettings.settings) {
+          setSettings(resSettings.settings);
+          if (resSettings.settings.emailConfig) {
+            setEmailConfig((prev) => ({ ...prev, ...resSettings.settings.emailConfig }));
+          }
+        }
         if (resSettings.themes) setThemes(resSettings.themes);
         if (resSettings.activeThemeId) setActiveThemeId(resSettings.activeThemeId);
         if (resSettings.aiProviders) setAiProviders(resSettings.aiProviders);
         if (resMaster.scopeModules) setScopeModules(resMaster.scopeModules);
         if (resMaster.priceList) setPriceList(resMaster.priceList);
+
+        try {
+          const emailRes = await fetch('/api/email').then((r) => r.json());
+          if (emailRes.logs) setEmailLogs(emailRes.logs);
+        } catch (_) {}
       } catch (e) {
         console.error(e);
       }
@@ -181,7 +235,10 @@ function AdminSettingsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          settings,
+          settings: {
+            ...settings,
+            emailConfig,
+          },
           activeThemeId,
           aiProviders,
           currentUser,
@@ -195,6 +252,58 @@ function AdminSettingsPage() {
     } catch (e) {
       console.error(e);
     }
+  };
+
+  // Handle Send Test Email
+  const handleSendTestEmail = async () => {
+    if (!testRecipient.trim()) return;
+    setSendingTest(true);
+    setTestResult(null);
+    try {
+      const res = await fetch('/api/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'test',
+          recipient: testRecipient.trim(),
+          config: emailConfig,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTestResult({
+          success: true,
+          message: `Verification message successfully dispatched to ${data.recipient}`,
+          transport: data.transport,
+          fallbackNotice: data.fallbackNotice,
+        });
+        if (data.log) {
+          setEmailLogs((prev) => [data.log, ...prev]);
+        }
+      } else {
+        setTestResult({
+          success: false,
+          message: data.error || 'Failed to dispatch test verification email.',
+        });
+      }
+    } catch (err: any) {
+      setTestResult({
+        success: false,
+        message: err.message || 'Network error while attempting email dispatch.',
+      });
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
+  // Handle Refresh Email Logs
+  const handleRefreshEmailLogs = async () => {
+    setLoadingLogs(true);
+    try {
+      const emailRes = await fetch('/api/email').then((r) => r.json());
+      if (emailRes.logs) setEmailLogs(emailRes.logs);
+    } catch (_) {}
+    setLoadingLogs(false);
   };
 
   // Handle AI Theme Generation
@@ -282,6 +391,7 @@ function AdminSettingsPage() {
       <div className="flex flex-wrap gap-1.5 border-b border-slate-200 dark:border-[#1E2A3E] pb-2">
         {[
           { id: 'company', label: 'Company Profile & Brand Logos', icon: Building2 },
+          { id: 'email', label: 'Email & Messaging Integration', icon: Mail },
           { id: 'theme', label: 'Appearance & Theme Studio', icon: Palette },
           { id: 'ai', label: 'AI Fallback Chain & Keys', icon: Cpu },
           { id: 'scope', label: 'Standard Scope Master List', icon: Layers },
@@ -863,7 +973,464 @@ function AdminSettingsPage() {
         </div>
       )}
 
-      {/* TAB 2: Appearance & Theme Studio */}
+      {/* TAB 2: Email & Messaging Integration */}
+      {activeTab === 'email' && (
+        <div className="space-y-6">
+          {/* Top Gateway Overview Card */}
+          <div className="crm-card p-5 bg-white dark:bg-[#111925] border border-slate-200 dark:border-[#1E2A3E] rounded-xl shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-[#1E2A3E] pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                    <span>Corporate Email Gateway & Messaging Relays</span>
+                    <span
+                      className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold uppercase ${
+                        emailConfig.enabled
+                          ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700'
+                      }`}
+                    >
+                      {emailConfig.enabled ? 'Service Active' : 'Service Paused'}
+                    </span>
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Configure Hostinger enterprise mail relays, transactional email APIs, and manage outbound automated communications.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                  <span>Outbound Dispatch:</span>
+                  <input
+                    type="checkbox"
+                    checked={emailConfig.enabled}
+                    onChange={(e) => setEmailConfig({ ...emailConfig, enabled: e.target.checked })}
+                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="font-mono text-[11px] text-blue-600 dark:text-blue-400">
+                    {emailConfig.enabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            {/* Provider Selector Cards Grid */}
+            <div className="space-y-2">
+              <span className="text-[11px] font-mono font-bold uppercase text-slate-500 block">
+                Select Dispatch Transport Engine:
+              </span>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {[
+                  {
+                    id: 'hostinger_smtp',
+                    name: 'Hostinger SMTP Direct',
+                    badge: 'Recommended',
+                    desc: 'Direct socket connection to smtp.hostinger.com:465 with SSL/TLS and SPF/DKIM verification.',
+                    icon: Server,
+                  },
+                  {
+                    id: 'native_mail',
+                    name: 'Hostinger Server MTA',
+                    badge: 'Max Reliability',
+                    desc: 'Native LiteSpeed mail server running on crm.ifleon.com. Zero external latency and 100% uptime.',
+                    icon: ShieldCheck,
+                  },
+                  {
+                    id: 'elasticemail',
+                    name: 'Elastic Email API',
+                    badge: 'API Gateway',
+                    desc: 'REST API transactional delivery with 64-character token authentication and delivery telemetry.',
+                    icon: Key,
+                  },
+                  {
+                    id: 'brevo',
+                    name: 'Brevo (Sendinblue)',
+                    badge: 'Cloud Partner',
+                    desc: 'Official Hostinger transactional email cloud partner with dedicated IP routing.',
+                    icon: Globe,
+                  },
+                  {
+                    id: 'resend',
+                    name: 'Resend Cloud',
+                    badge: 'Modern API',
+                    desc: 'Developer transactional API with instantaneous dispatch and modern webhook feedback.',
+                    icon: Send,
+                  },
+                  {
+                    id: 'custom_smtp',
+                    name: 'Custom Corporate SMTP',
+                    badge: 'Enterprise',
+                    desc: 'Connect any external enterprise mail exchange or secure corporate SMTP relay.',
+                    icon: Inbox,
+                  },
+                ].map((prov) => {
+                  const Icon = prov.icon;
+                  const isSelected = emailConfig.provider === prov.id;
+                  return (
+                    <button
+                      key={prov.id}
+                      type="button"
+                      onClick={() => setEmailConfig({ ...emailConfig, provider: prov.id as any })}
+                      className={`p-3.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
+                        isSelected
+                          ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-900/20 ring-1 ring-blue-600'
+                          : 'border-slate-200 dark:border-[#1E2A3E] bg-white dark:bg-[#172132]/30 hover:border-slate-300 dark:hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Icon className={`w-4 h-4 ${isSelected ? 'text-blue-600' : 'text-slate-400'}`} />
+                            <span className="text-xs font-bold text-slate-900 dark:text-white">{prov.name}</span>
+                          </div>
+                          <span
+                            className={`text-[9px] font-mono px-1.5 py-0.5 rounded font-semibold ${
+                              isSelected
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                            }`}
+                          >
+                            {prov.badge}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                          {prov.desc}
+                        </p>
+                      </div>
+
+                      <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                        <span className="text-[10px] font-mono text-slate-400">
+                          {isSelected ? 'Selected Active Engine' : 'Click to select'}
+                        </span>
+                        {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Gateway Credentials & Details Form */}
+            <div className="pt-4 border-t border-slate-100 dark:border-[#1E2A3E] space-y-4">
+              <span className="text-[11px] font-mono font-bold uppercase text-slate-500 block">
+                Gateway Parameters & Credentials:
+              </span>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Sender Email */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Sender Outbound Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={emailConfig.senderEmail}
+                    onChange={(e) => setEmailConfig({ ...emailConfig, senderEmail: e.target.value })}
+                    placeholder="contact@ifleon.com"
+                    className="w-full px-3 py-2 rounded-lg bg-white dark:bg-[#172132] border border-slate-200 dark:border-[#1E2A3E] text-slate-900 dark:text-white text-xs font-mono"
+                  />
+                  <span className="text-[10px] text-slate-400 block mt-0.5">
+                    Must match an authorized mailbox on Hostinger (@ifleon.com) for SPF alignment.
+                  </span>
+                </div>
+
+                {/* Sender Display Name */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Sender Display Name
+                  </label>
+                  <input
+                    type="text"
+                    value={emailConfig.senderName}
+                    onChange={(e) => setEmailConfig({ ...emailConfig, senderName: e.target.value })}
+                    placeholder="iFleon Corporate CRM"
+                    className="w-full px-3 py-2 rounded-lg bg-white dark:bg-[#172132] border border-slate-200 dark:border-[#1E2A3E] text-slate-900 dark:text-white text-xs"
+                  />
+                  <span className="text-[10px] text-slate-400 block mt-0.5">
+                    Displayed in client inboxes as the email originator name.
+                  </span>
+                </div>
+
+                {/* API Key / Token */}
+                <div className="md:col-span-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      API Key / Hostinger Auth Token (64-Hex Token)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      className="text-[11px] text-blue-600 dark:text-blue-400 flex items-center gap-1 hover:underline cursor-pointer"
+                    >
+                      {showApiKey ? (
+                        <>
+                          <EyeOff className="w-3 h-3" />
+                          <span>Hide Token</span>
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="w-3 h-3" />
+                          <span>Show Token</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showApiKey ? 'text' : 'password'}
+                      value={emailConfig.apiKey}
+                      onChange={(e) => setEmailConfig({ ...emailConfig, apiKey: e.target.value })}
+                      placeholder="Enter 64-character Hostinger or Elastic Email API key..."
+                      className="w-full px-3 py-2 rounded-lg bg-white dark:bg-[#172132] border border-slate-200 dark:border-[#1E2A3E] text-slate-900 dark:text-white text-xs font-mono pr-10"
+                    />
+                    <Key className="w-4 h-4 text-slate-400 absolute right-3 top-2.5" />
+                  </div>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">
+                    Prefilled with your active key ({emailConfig.apiKey ? `${emailConfig.apiKey.length} characters` : 'None'}). Secured via server-side storage.
+                  </span>
+                </div>
+
+                {/* SMTP Host */}
+                {(emailConfig.provider === 'hostinger_smtp' || emailConfig.provider === 'custom_smtp') && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        SMTP Server Host
+                      </label>
+                      <input
+                        type="text"
+                        value={emailConfig.smtpHost || 'smtp.hostinger.com'}
+                        onChange={(e) => setEmailConfig({ ...emailConfig, smtpHost: e.target.value })}
+                        placeholder="smtp.hostinger.com"
+                        className="w-full px-3 py-2 rounded-lg bg-white dark:bg-[#172132] border border-slate-200 dark:border-[#1E2A3E] text-slate-900 dark:text-white text-xs font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        SMTP Port & Protocol
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="number"
+                          value={emailConfig.smtpPort || 465}
+                          onChange={(e) => setEmailConfig({ ...emailConfig, smtpPort: parseInt(e.target.value) || 465 })}
+                          className="w-full px-3 py-2 rounded-lg bg-white dark:bg-[#172132] border border-slate-200 dark:border-[#1E2A3E] text-slate-900 dark:text-white text-xs font-mono"
+                        />
+                        <div className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-mono text-slate-600 dark:text-slate-300 flex items-center justify-center">
+                          {emailConfig.smtpPort === 465 ? 'SSL Security' : 'STARTTLS'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        SMTP Mailbox Username
+                      </label>
+                      <input
+                        type="text"
+                        value={emailConfig.smtpUser || emailConfig.senderEmail}
+                        onChange={(e) => setEmailConfig({ ...emailConfig, smtpUser: e.target.value })}
+                        placeholder="contact@ifleon.com"
+                        className="w-full px-3 py-2 rounded-lg bg-white dark:bg-[#172132] border border-slate-200 dark:border-[#1E2A3E] text-slate-900 dark:text-white text-xs font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          SMTP Mailbox Password
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setShowSmtpPass(!showSmtpPass)}
+                          className="text-[11px] text-blue-600 dark:text-blue-400 flex items-center gap-1 hover:underline cursor-pointer"
+                        >
+                          {showSmtpPass ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                          <span>{showSmtpPass ? 'Hide' : 'Show'}</span>
+                        </button>
+                      </div>
+                      <input
+                        type={showSmtpPass ? 'text' : 'password'}
+                        value={emailConfig.smtpPass || ''}
+                        onChange={(e) => setEmailConfig({ ...emailConfig, smtpPass: e.target.value })}
+                        placeholder="Hostinger mailbox password or app token"
+                        className="w-full px-3 py-2 rounded-lg bg-white dark:bg-[#172132] border border-slate-200 dark:border-[#1E2A3E] text-slate-900 dark:text-white text-xs font-mono"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Interactive Test Dispatch Bench */}
+          <div className="crm-card p-5 bg-white dark:bg-[#111925] border border-slate-200 dark:border-[#1E2A3E] rounded-xl shadow-xs space-y-4">
+            <div className="border-b border-slate-100 dark:border-[#1E2A3E] pb-3 flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
+                  <Send className="w-4 h-4 text-blue-600" />
+                  <span>Interactive Mail Gateway Diagnostics Workbench</span>
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Dispatch an end-to-end verification message to confirm connectivity, transport TLS handshakes, and SPF delivery.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2.5">
+              <div className="flex-1">
+                <input
+                  type="email"
+                  value={testRecipient}
+                  onChange={(e) => setTestRecipient(e.target.value)}
+                  placeholder="Enter test recipient email (e.g. contact@ifleon.com or your email)..."
+                  className="w-full px-3 py-2 rounded-lg bg-white dark:bg-[#172132] border border-slate-200 dark:border-[#1E2A3E] text-slate-900 dark:text-white text-xs font-mono"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSendTestEmail}
+                disabled={sendingTest || !testRecipient.trim()}
+                className="px-4 py-2 rounded-lg bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
+              >
+                {sendingTest ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Dispatching Verification...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Send Test Verification Email</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Test Result Callout */}
+            {testResult && (
+              <div
+                className={`p-4 rounded-xl border text-xs flex items-start gap-3 transition ${
+                  testResult.success
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
+                    : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-200'
+                }`}
+              >
+                {testResult.success ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                )}
+                <div className="space-y-1">
+                  <div className="font-bold">{testResult.message}</div>
+                  {testResult.transport && (
+                    <div className="text-[11px] font-mono text-emerald-700 dark:text-emerald-300">
+                      Transport Handshake: {testResult.transport}
+                    </div>
+                  )}
+                  {testResult.fallbackNotice && (
+                    <div className="text-[11px] text-amber-700 dark:text-amber-300 font-medium">
+                      Notice: {testResult.fallbackNotice}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Email Dispatch History / Audit Log */}
+          <div className="crm-card p-5 bg-white dark:bg-[#111925] border border-slate-200 dark:border-[#1E2A3E] rounded-xl shadow-xs space-y-3">
+            <div className="border-b border-slate-100 dark:border-[#1E2A3E] pb-3 flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
+                  <Inbox className="w-4 h-4 text-blue-600" />
+                  <span>Outbound Message Dispatch Telemetry</span>
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Recent outgoing transactional messages, proposal transmissions, and test dispatches.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleRefreshEmailLogs}
+                disabled={loadingLogs}
+                className="px-2.5 py-1 rounded-md text-[11px] font-medium border border-slate-200 dark:border-[#1E2A3E] hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <RefreshCw className={`w-3 h-3 ${loadingLogs ? 'animate-spin' : ''}`} />
+                <span>Refresh Log</span>
+              </button>
+            </div>
+
+            {emailLogs.length === 0 ? (
+              <div className="py-8 text-center text-slate-400 text-xs">
+                No outbound email transmissions recorded yet. Use the workbench above to dispatch a test verification email.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 dark:bg-[#172132] text-slate-500 uppercase font-mono text-[10px]">
+                    <tr>
+                      <th className="p-2.5">Sent Timestamp</th>
+                      <th className="p-2.5">Recipient Address</th>
+                      <th className="p-2.5">Subject</th>
+                      <th className="p-2.5">Category</th>
+                      <th className="p-2.5">Engine</th>
+                      <th className="p-2.5 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-[#1E2A3E]">
+                    {emailLogs.map((log) => (
+                      <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-[#172132]/50">
+                        <td className="p-2.5 font-mono text-[11px] text-slate-500">
+                          {new Date(log.sentAt).toLocaleString('en-IN', {
+                            dateStyle: 'short',
+                            timeStyle: 'medium',
+                          })}
+                        </td>
+                        <td className="p-2.5 font-mono font-medium text-slate-900 dark:text-white">
+                          {log.recipient}
+                        </td>
+                        <td className="p-2.5 text-slate-700 dark:text-slate-300 max-w-xs truncate">
+                          {log.subject}
+                        </td>
+                        <td className="p-2.5">
+                          <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 uppercase">
+                            {log.type}
+                          </span>
+                        </td>
+                        <td className="p-2.5 font-mono text-[11px] text-slate-500 uppercase">
+                          {log.provider}
+                        </td>
+                        <td className="p-2.5 text-right">
+                          <span
+                            className={`font-mono text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                              log.status === 'sent'
+                                ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300'
+                                : 'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300'
+                            }`}
+                          >
+                            {log.status === 'sent' ? 'Delivered' : 'Failed'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: Appearance & Theme Studio */}
       {activeTab === 'theme' && (
         <div className="space-y-4">
           <div className="crm-card p-5 space-y-3.5 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-[#1E2A3E] rounded-xl">

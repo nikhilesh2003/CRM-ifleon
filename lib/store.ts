@@ -11,6 +11,7 @@ import {
   AuditLogEntry,
   CompanySettings,
   CRMTheme,
+  EmailLogEntry,
 } from './types';
 import fs from 'fs';
 import path from 'path';
@@ -29,6 +30,7 @@ export interface CRMDatabase {
   settings: CompanySettings;
   themes: CRMTheme[];
   activeThemeId: string;
+  emailLogs?: EmailLogEntry[];
 }
 
 const INITIAL_USERS: User[] = [
@@ -452,6 +454,17 @@ const INITIAL_SETTINGS: CompanySettings = {
   lightLogoUrl: '/logo-light-horizontal.png',
   darkLogoUrl: '/logo-dark-horizontal.png',
   iconLogoUrl: '/logo-icon.png',
+  emailConfig: {
+    provider: 'hostinger_smtp',
+    apiKey: 'e251b100f6be8eb4caba9e20686d5716cd0a755de99247dfea6bde9746d77e3d',
+    senderEmail: 'contact@ifleon.com',
+    senderName: 'iFleon Corporate CRM',
+    smtpHost: 'smtp.hostinger.com',
+    smtpPort: 465,
+    smtpUser: 'contact@ifleon.com',
+    smtpPass: 'e251b100f6be8eb4caba9e20686d5716cd0a755de99247dfea6bde9746d77e3d',
+    enabled: true,
+  },
 };
 
 const INITIAL_THEMES: CRMTheme[] = [

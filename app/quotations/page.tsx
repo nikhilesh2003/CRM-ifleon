@@ -21,6 +21,9 @@ import {
   User,
   Copy,
   Check,
+  Mail,
+  Send,
+  Loader2,
 } from 'lucide-react';
 
 export default function QuotationsListPage() {
@@ -31,6 +34,12 @@ export default function QuotationsListPage() {
   const [filterType, setFilterType] = useState('all');
   const [previewDoc, setPreviewDoc] = useState<GeneratedDocument | null>(null);
   const [copiedDocId, setCopiedDocId] = useState<string | null>(null);
+
+  // Email Proposal Modal State
+  const [emailModalDoc, setEmailModalDoc] = useState<GeneratedDocument | null>(null);
+  const [targetEmail, setTargetEmail] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailNotice, setEmailNotice] = useState<{ success: boolean; message: string } | null>(null);
 
   const handleCopyDocRef = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -93,6 +102,80 @@ export default function QuotationsListPage() {
       fetchDocs();
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleOpenEmailModal = (doc: GeneratedDocument) => {
+    setEmailModalDoc(doc);
+    setTargetEmail('contact@ifleon.com');
+    setEmailNotice(null);
+  };
+
+  const handleSendProposalEmail = async () => {
+    if (!emailModalDoc || !targetEmail.trim()) return;
+    setEmailSending(true);
+    setEmailNotice(null);
+    try {
+      const subject = `[Proposal] ${settings?.name || 'iFleon'} Commercial Deliverables - ${emailModalDoc.businessName} (${emailModalDoc.docNumber})`;
+      const htmlBody = `
+        <p>Dear <strong>${emailModalDoc.contactPerson || emailModalDoc.businessName}</strong>,</p>
+        <p>Thank you for engaging with <strong>${settings?.name || 'iFleon Technologies'}</strong>. We are pleased to submit our formal commercial proposal and scope definition for your review.</p>
+        <div style="background:#f1f5f9;border-left:4px solid #2563eb;padding:14px 18px;margin:18px 0;border-radius:4px;">
+          <div style="font-weight:700;color:#0f172a;font-size:14px;margin-bottom:6px;">Summary of Commercial Investment</div>
+          <div style="font-size:13px;color:#334155;line-height:1.6;">
+            <strong>Document Ref:</strong> ${emailModalDoc.docNumber}<br/>
+            <strong>Scope Modules:</strong> ${emailModalDoc.selectedModules.join(', ')}<br/>
+            <strong>Total Proposed Investment:</strong> ₹${emailModalDoc.total.toLocaleString('en-IN')}<br/>
+            <strong>Project Timeline:</strong> ${emailModalDoc.timeline}<br/>
+            <strong>Payment Terms:</strong> ${emailModalDoc.paymentTerms}
+          </div>
+        </div>
+        <p>A full itemized breakdown and legal sign-off terms are on file with our solutions delivery group.</p>
+        <p>Please review and feel free to reach out to our principal solutions consultant, <strong>${emailModalDoc.consultantName}</strong>, or our office directly at <a href="mailto:${settings?.email || 'contact@ifleon.com'}">${settings?.email || 'contact@ifleon.com'}</a>.</p>
+      `;
+
+      const res = await fetch('/api/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'send',
+          to: targetEmail.trim(),
+          subject,
+          html: htmlBody,
+          type: 'quotation',
+          title: `Commercial Proposal: ${emailModalDoc.businessName}`,
+          meta: {
+            'Document Ref': emailModalDoc.docNumber,
+            'Client Entity': emailModalDoc.businessName,
+            'Primary Contact': emailModalDoc.contactPerson,
+            'Proposed Total': `₹${emailModalDoc.total.toLocaleString('en-IN')}`,
+            'Lead Consultant': emailModalDoc.consultantName,
+          },
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setEmailNotice({
+          success: true,
+          message: `Proposal successfully dispatched to ${targetEmail.trim()} via ${data.transport || 'Hostinger Gateway'}.`,
+        });
+        if (emailModalDoc.status === 'Draft' || emailModalDoc.status === 'Needs Approval') {
+          handleUpdateStatus(emailModalDoc.id, 'Sent');
+        }
+      } else {
+        setEmailNotice({
+          success: false,
+          message: data.error || 'Failed to dispatch proposal email.',
+        });
+      }
+    } catch (err: any) {
+      setEmailNotice({
+        success: false,
+        message: err.message || 'Network error while attempting dispatch.',
+      });
+    } finally {
+      setEmailSending(false);
     }
   };
 
@@ -285,24 +368,33 @@ export default function QuotationsListPage() {
                         )}
                       </td>
 
-                      {/* Actions: PowerPoint PPTX & PDF View */}
+                      {/* Actions: PowerPoint PPTX, PDF View & Email */}
                       <td className="py-2.5 px-3.5 text-right whitespace-nowrap space-x-2">
                         <button
                           onClick={() => handleDownloadPPTX(doc)}
-                          className="px-2.5 py-1.5 rounded-md bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white font-medium text-xs inline-flex items-center gap-1.5 shadow-xs transition"
+                          className="px-2.5 py-1.5 rounded-md bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white font-medium text-xs inline-flex items-center gap-1.5 shadow-xs transition cursor-pointer"
                           title="Generate and download PowerPoint (.pptx) file"
                         >
                           <Presentation className="w-3.5 h-3.5 text-orange-400" />
-                          <span>Download PPTX</span>
+                          <span>PPTX</span>
                         </button>
 
                         <button
                           onClick={() => setPreviewDoc(doc)}
-                          className="px-2.5 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs inline-flex items-center gap-1.5 shadow-xs transition"
+                          className="px-2.5 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs inline-flex items-center gap-1.5 shadow-xs transition cursor-pointer"
                           title="Open printable PDF proposal view"
                         >
                           <Printer className="w-3.5 h-3.5" />
-                          <span>PDF Proposal</span>
+                          <span>PDF</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleOpenEmailModal(doc)}
+                          className="px-2.5 py-1.5 rounded-md bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-medium text-xs inline-flex items-center gap-1.5 border border-blue-200 dark:border-blue-800 shadow-xs transition cursor-pointer"
+                          title="Email proposal to client"
+                        >
+                          <Mail className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                          <span>Email</span>
                         </button>
                       </td>
                     </tr>
@@ -330,15 +422,22 @@ export default function QuotationsListPage() {
               </div>
               <div className="flex items-center gap-2">
                 <button
+                  onClick={() => handleOpenEmailModal(previewDoc)}
+                  className="px-3 py-1.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium text-xs flex items-center gap-1.5 border border-blue-200 shadow-xs cursor-pointer"
+                >
+                  <Mail className="w-4 h-4 text-blue-600" />
+                  <span>Email Proposal</span>
+                </button>
+                <button
                   onClick={() => window.print()}
-                  className="px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs flex items-center gap-1.5 shadow-xs"
+                  className="px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs flex items-center gap-1.5 shadow-xs cursor-pointer"
                 >
                   <Printer className="w-4 h-4" />
                   <span>Print / Save as PDF</span>
                 </button>
                 <button
                   onClick={() => setPreviewDoc(null)}
-                  className="px-3 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs border border-slate-200"
+                  className="px-3 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs border border-slate-200 cursor-pointer"
                 >
                   Close
                 </button>
@@ -516,6 +615,106 @@ export default function QuotationsListPage() {
               <div className="pt-6 border-t text-center text-[10px] text-slate-400">
                 {settings?.name || 'iFleon'} • {settings?.tagline} • {settings?.website} • {settings?.phone} • {settings?.email}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Email Proposal Modal */}
+      {emailModalDoc && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-white dark:bg-[#111925] text-slate-900 dark:text-white rounded-xl shadow-2xl p-6 space-y-4 border border-slate-200 dark:border-[#1E2A3E]">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#1E2A3E] pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                  <Mail className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold">Transmit Commercial Proposal</h3>
+                  <p className="text-[11px] text-slate-500">{emailModalDoc.docNumber} • {emailModalDoc.businessName}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEmailModalDoc(null)}
+                className="text-slate-400 hover:text-slate-600 text-xs font-bold px-2 py-1 cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                  Recipient Client Email Address
+                </label>
+                <input
+                  type="email"
+                  value={targetEmail}
+                  onChange={(e) => setTargetEmail(e.target.value)}
+                  placeholder="client@dealership.com or contact@ifleon.com"
+                  className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-[#172132] border border-slate-200 dark:border-[#1E2A3E] text-slate-900 dark:text-white font-mono"
+                />
+              </div>
+
+              <div className="p-3 rounded-lg bg-slate-50 dark:bg-[#172132] border border-slate-200 dark:border-[#1E2A3E] space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Deliverables:</span>
+                  <span className="font-semibold">{emailModalDoc.selectedModules.length} Modules</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Proposed Investment:</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{emailModalDoc.total.toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Dispatch Relay:</span>
+                  <span className="font-mono text-[10px] text-slate-600 dark:text-slate-300">Hostinger Corporate Gateway</span>
+                </div>
+              </div>
+
+              {emailNotice && (
+                <div
+                  className={`p-3 rounded-lg border text-xs flex items-center gap-2 ${
+                    emailNotice.success
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-200'
+                      : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 text-rose-800 dark:text-rose-200'
+                  }`}
+                >
+                  {emailNotice.success ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                  )}
+                  <span>{emailNotice.message}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-[#1E2A3E]">
+              <button
+                type="button"
+                onClick={() => setEmailModalDoc(null)}
+                className="px-3.5 py-1.5 rounded-lg border border-slate-200 dark:border-[#1E2A3E] text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                Dismiss
+              </button>
+              <button
+                type="button"
+                onClick={handleSendProposalEmail}
+                disabled={emailSending || !targetEmail.trim()}
+                className="px-4 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-white font-semibold text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+              >
+                {emailSending ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Transmitting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Send Proposal via Email</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

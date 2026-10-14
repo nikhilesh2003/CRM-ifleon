@@ -199,6 +199,29 @@ export interface AuditLogEntry {
   details: string;
 }
 
+export interface EmailConfig {
+  provider: 'hostinger_smtp' | 'elasticemail' | 'brevo' | 'resend' | 'custom_smtp' | 'native_mail';
+  apiKey: string;
+  senderEmail: string;
+  senderName: string;
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpUser?: string;
+  smtpPass?: string;
+  enabled: boolean;
+}
+
+export interface EmailLogEntry {
+  id: string;
+  recipient: string;
+  subject: string;
+  type: 'test' | 'quotation' | 'lead_notification' | 'task_alert' | 'general';
+  provider: string;
+  status: 'sent' | 'failed';
+  error?: string;
+  sentAt: string;
+}
+
 export interface CompanySettings {
   name: string;
   tagline: string;
@@ -212,6 +235,7 @@ export interface CompanySettings {
   iconLogoUrl: string;
   lightLogoUrl?: string;
   darkLogoUrl?: string;
+  emailConfig?: EmailConfig;
 }
 
 export interface CRMTheme {
