@@ -251,3 +251,46 @@ export interface CRMTheme {
   borderRadius: string;
   isDark: boolean;
 }
+
+export type DatabaseType = 'json' | 'mysql';
+
+export interface DatabaseConfig {
+  type: DatabaseType;
+  host: string;
+  port: number;
+  database: string;
+  username: string;
+  password?: string;
+  passwordMasked?: string;
+  charset?: string;
+  ssl?: boolean;
+  connected?: boolean;
+  lastTested?: string;
+}
+
+export interface TableRecordCount {
+  table: string;
+  count: number;
+}
+
+export interface BackupSnapshot {
+  fileName: string;
+  size: number;
+  createdAt: string;
+  type: 'json' | 'sql';
+}
+
+export interface DatabaseStatus {
+  activeDriver: DatabaseType;
+  status: 'connected' | 'disconnected' | 'error';
+  config: DatabaseConfig;
+  storagePath: string;
+  fileSizeBytes: number;
+  lastModified: string;
+  tables: TableRecordCount[];
+  backups: BackupSnapshot[];
+  latencyMs?: number;
+  message?: string;
+  error?: string;
+}
+

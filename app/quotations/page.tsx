@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCRM } from '@/context/CRMContext';
+import { useToast } from '@/context/ToastContext';
 import { GeneratedDocument } from '@/lib/types';
 import { generatePowerPointQuotation } from '@/lib/export-utils';
 import {
@@ -28,6 +29,7 @@ import {
 
 export default function QuotationsListPage() {
   const { currentUser, settings } = useCRM();
+  const { toast } = useToast();
   const [documents, setDocuments] = useState<GeneratedDocument[]>([]);
   const [threshold, setThreshold] = useState<number>(100000);
   const [loading, setLoading] = useState(true);
@@ -67,10 +69,12 @@ export default function QuotationsListPage() {
   const handleDownloadPPTX = async (doc: GeneratedDocument) => {
     if (!settings) return;
     try {
+      toast.info('Generating 16:9 branded PowerPoint presentation...', 'Exporting PPTX');
       await generatePowerPointQuotation(doc, settings);
+      toast.success('PowerPoint presentation downloaded successfully.', 'Export Complete');
     } catch (e) {
       console.error('Error generating PPTX:', e);
-      alert('Generating PowerPoint presentation...');
+      toast.error('Unable to compile PowerPoint presentation file.', 'Export Failed');
     }
   };
 
@@ -81,9 +85,11 @@ export default function QuotationsListPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: docId, action: 'approve', currentUser }),
       });
+      toast.success('Quotation approved for client dispatch.', 'Proposal Approved');
       fetchDocs();
     } catch (e) {
       console.error(e);
+      toast.error('Failed to approve quotation.');
     }
   };
 
@@ -96,12 +102,14 @@ export default function QuotationsListPage() {
       });
       if (!res.ok) {
         const err = await res.json();
-        alert(err.error || 'Failed to update status');
+        toast.error(err.error || 'Failed to update status', 'Update Error');
         return;
       }
+      toast.success(`Quotation status changed to "${newStatus}".`, 'Status Updated');
       fetchDocs();
     } catch (e) {
       console.error(e);
+      toast.error('Error updating status.');
     }
   };
 

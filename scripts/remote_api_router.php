@@ -572,6 +572,491 @@ if ($resource === 'admin' && $param1 === 'settings') {
     }
 }
 
+// 8.2 /api/admin/database
+function get_db_config() {
+    $cfgPath = __DIR__ . '/../data/db-config.json';
+    if (file_exists($cfgPath)) {
+        $data = json_decode(file_get_contents($cfgPath), true);
+        if (is_array($data)) return $data;
+    }
+    return [
+        'type' => 'json',
+        'host' => 'localhost',
+        'port' => 3306,
+        'database' => 'u408450631_crm',
+        'username' => 'u408450631_admin',
+        'password' => '',
+        'charset' => 'utf8mb4',
+        'connected' => false,
+        'lastTested' => null
+    ];
+}
+
+function save_db_config($cfg) {
+    $cfgPath = __DIR__ . '/../data/db-config.json';
+    $dir = dirname($cfgPath);
+    if (!is_dir($dir)) mkdir($dir, 0777, true);
+    file_put_contents($cfgPath, json_encode($cfg, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+}
+
+function test_mysql_pdo($host, $port, $database, $username, $password, $charset = 'utf8mb4') {
+    $t0 = microtime(true);
+    try {
+        $dsn = "mysql:host={$host};port={$port};dbname={$database};charset={$charset}";
+        $pdo = new PDO($dsn, $username, $password, [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_TIMEOUT => 4
+        ]);
+        $latency = round((microtime(true) - $t0) * 1000, 2);
+        return [
+            'success' => true,
+            'latencyMs' => $latency,
+            'message' => "Handshake verified with MySQL database '{$database}' ({$latency}ms)."
+        ];
+    } catch (PDOException $e) {
+        $latency = round((microtime(true) - $t0) * 1000, 2);
+        return [
+            'success' => false,
+            'latencyMs' => $latency,
+            'error' => $e->getMessage()
+        ];
+    }
+}
+
+function init_mysql_tables($pdo) {
+    $queries = [
+        "CREATE TABLE IF NOT EXISTS `crm_users` (
+            `id` VARCHAR(64) NOT NULL PRIMARY KEY,
+            `name` VARCHAR(128) NOT NULL,
+            `email` VARCHAR(128) NOT NULL,
+            `role` VARCHAR(32) NOT NULL,
+            `phone` VARCHAR(32) DEFAULT NULL,
+            `disabled` TINYINT(1) NOT NULL DEFAULT '0',
+            `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            `data` LONGTEXT NOT NULL,
+            INDEX idx_email (`email`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;",
+        "CREATE TABLE IF NOT EXISTS `crm_leads` (
+            `id` VARCHAR(64) NOT NULL PRIMARY KEY,
+            `business_name` VARCHAR(255) NOT NULL,
+            `contact_person` VARCHAR(128) NOT NULL,
+            `phone` VARCHAR(32) NOT NULL,
+            `status` VARCHAR(64) NOT NULL,
+            `consultant_id` VARCHAR(64) DEFAULT NULL,
+            `final_deal_amount` DECIMAL(12,2) DEFAULT NULL,
+            `manager_review` VARCHAR(32) DEFAULT 'Pending',
+            `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            `data` LONGTEXT NOT NULL,
+            INDEX idx_status (`status`),
+            INDEX idx_consultant (`consultant_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;",
+        "CREATE TABLE IF NOT EXISTS `crm_projects` (
+            `id` VARCHAR(64) NOT NULL PRIMARY KEY,
+            `name` VARCHAR(255) NOT NULL,
+            `status` VARCHAR(32) NOT NULL,
+            `data` LONGTEXT NOT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;",
+        "CREATE TABLE IF NOT EXISTS `crm_documents` (
+            `id` VARCHAR(64) NOT NULL PRIMARY KEY,
+            `doc_number` VARCHAR(64) NOT NULL,
+            `type` VARCHAR(32) NOT NULL,
+            `business_name` VARCHAR(255) NOT NULL,
+            `total` DECIMAL(12,2) NOT NULL,
+            `status` VARCHAR(32) NOT NULL,
+            `data` LONGTEXT NOT NULL,
+            INDEX idx_doc_number (`doc_number`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;",
+        "CREATE TABLE IF NOT EXISTS `crm_meetings` (
+            `id` VARCHAR(64) NOT NULL PRIMARY KEY,
+            `lead_id` VARCHAR(64) NOT NULL,
+            `meeting_date` VARCHAR(64) DEFAULT NULL,
+            `type` VARCHAR(32) DEFAULT NULL,
+            `data` LONGTEXT NOT NULL,
+            INDEX idx_lead (`lead_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;",
+        "CREATE TABLE IF NOT EXISTS `crm_tasks` (
+            `id` VARCHAR(64) NOT NULL PRIMARY KEY,
+            `consultant_id` VARCHAR(64) NOT NULL,
+            `title` VARCHAR(255) NOT NULL,
+            `due_date` VARCHAR(64) DEFAULT NULL,
+            `completed` TINYINT(1) NOT NULL DEFAULT '0',
+            `priority` VARCHAR(32) DEFAULT 'medium',
+            `data` LONGTEXT NOT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;",
+        "CREATE TABLE IF NOT EXISTS `crm_audit_logs` (
+            `id` VARCHAR(64) NOT NULL PRIMARY KEY,
+            `timestamp` VARCHAR(64) NOT NULL,
+            `user_id` VARCHAR(64) NOT NULL,
+            `action` VARCHAR(128) NOT NULL,
+            `entity_type` VARCHAR(64) NOT NULL,
+            `data` LONGTEXT NOT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;",
+        "CREATE TABLE IF NOT EXISTS `crm_settings` (
+            `setting_key` VARCHAR(64) NOT NULL PRIMARY KEY,
+            `setting_value` LONGTEXT NOT NULL,
+            `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;"
+    ];
+
+    foreach ($queries as $q) {
+        $pdo->exec($q);
+    }
+}
+
+if ($resource === 'admin' && $param1 === 'database') {
+    $backupsDir = __DIR__ . '/../data/backups';
+
+    if ($method === 'GET') {
+        $cfg = get_db_config();
+        $fileSize = file_exists($dbPath) ? filesize($dbPath) : 0;
+        $mtime = file_exists($dbPath) ? date('c', filemtime($dbPath)) : date('c');
+
+        $backups = [];
+        if (is_dir($backupsDir)) {
+            $files = scandir($backupsDir);
+            foreach ($files as $f) {
+                if ($f === '.' || $f === '..') continue;
+                $p = $backupsDir . '/' . $f;
+                $backups[] = [
+                    'fileName' => $f,
+                    'size' => filesize($p),
+                    'createdAt' => date('c', filemtime($p)),
+                    'type' => (substr($f, -4) === '.sql') ? 'sql' : 'json'
+                ];
+            }
+            usort($backups, function($a, $b) {
+                return strtotime($b['createdAt']) - strtotime($a['createdAt']);
+            });
+        }
+
+        $tables = [
+            ['table' => 'users', 'count' => count($db['users'] ?? [])],
+            ['table' => 'leads', 'count' => count($db['leads'] ?? [])],
+            ['table' => 'projects', 'count' => count($db['projects'] ?? [])],
+            ['table' => 'documents', 'count' => count($db['documents'] ?? [])],
+            ['table' => 'tasks', 'count' => count($db['tasks'] ?? [])],
+            ['table' => 'meetings', 'count' => count($db['meetings'] ?? [])],
+            ['table' => 'auditLogs', 'count' => count($db['auditLogs'] ?? [])],
+            ['table' => 'scopeModules', 'count' => count($db['scopeModules'] ?? [])],
+            ['table' => 'priceList', 'count' => count($db['priceList'] ?? [])],
+        ];
+
+        $maskedCfg = $cfg;
+        $maskedCfg['password'] = '';
+        $maskedCfg['passwordMasked'] = !empty($cfg['password']) ? '••••••••••••' : '';
+
+        // Test connection live if mysql is selected
+        $liveStatus = 'connected';
+        $latency = 1.0;
+        $statusMsg = 'Local atomic JSON data lakehouse is operational.';
+
+        if (($cfg['type'] ?? 'json') === 'mysql' && !empty($cfg['database']) && !empty($cfg['username'])) {
+            $testRes = test_mysql_pdo(
+                $cfg['host'] ?? 'localhost',
+                $cfg['port'] ?? 3306,
+                $cfg['database'],
+                $cfg['username'],
+                $cfg['password'] ?? '',
+                $cfg['charset'] ?? 'utf8mb4'
+            );
+            if ($testRes['success']) {
+                $liveStatus = 'connected';
+                $latency = $testRes['latencyMs'];
+                $statusMsg = "MySQL database {$cfg['database']} connected successfully ({$latency}ms).";
+            } else {
+                $liveStatus = 'error';
+                $latency = $testRes['latencyMs'];
+                $statusMsg = "MySQL connection error: " . ($testRes['error'] ?? 'Connection refused');
+            }
+        }
+
+        echo json_encode([
+            'activeDriver' => $cfg['type'] ?? 'json',
+            'status' => $liveStatus,
+            'config' => $maskedCfg,
+            'storagePath' => realpath($dbPath) ?: $dbPath,
+            'fileSizeBytes' => $fileSize,
+            'lastModified' => $mtime,
+            'tables' => $tables,
+            'backups' => $backups,
+            'latencyMs' => $latency,
+            'message' => $statusMsg
+        ]);
+        exit;
+    } elseif ($method === 'POST') {
+        $input = get_input();
+        $action = $input['action'] ?? 'test';
+
+        if ($action === 'test') {
+            $host = trim($input['host'] ?? 'localhost');
+            $port = (int)($input['port'] ?? 3306);
+            $database = trim($input['database'] ?? '');
+            $username = trim($input['username'] ?? '');
+            $password = trim($input['password'] ?? '');
+            $charset = trim($input['charset'] ?? 'utf8mb4');
+
+            if (empty($database) || empty($username)) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'error' => 'Database name and username are required.']);
+                exit;
+            }
+
+            // If password was sent masked, use the saved one
+            if (empty($password) || strpos($password, '••••') !== false) {
+                $savedCfg = get_db_config();
+                $password = $savedCfg['password'] ?? '';
+            }
+
+            $res = test_mysql_pdo($host, $port, $database, $username, $password, $charset);
+            echo json_encode($res);
+            exit;
+        }
+
+        if ($action === 'save') {
+            $currentCfg = get_db_config();
+            $newType = $input['type'] ?? 'json';
+            $host = trim($input['host'] ?? $currentCfg['host']);
+            $port = (int)($input['port'] ?? $currentCfg['port']);
+            $database = trim($input['database'] ?? $currentCfg['database']);
+            $username = trim($input['username'] ?? $currentCfg['username']);
+            $incomingPass = $input['password'] ?? '';
+            $password = (!empty($incomingPass) && strpos($incomingPass, '••••') === false) ? $incomingPass : ($currentCfg['password'] ?? '');
+            $charset = trim($input['charset'] ?? 'utf8mb4');
+
+            $cfg = [
+                'type' => $newType,
+                'host' => $host,
+                'port' => $port,
+                'database' => $database,
+                'username' => $username,
+                'password' => $password,
+                'charset' => $charset,
+                'connected' => ($newType === 'mysql'),
+                'lastTested' => date('c')
+            ];
+
+            // If MySQL, verify connection and create tables
+            if ($newType === 'mysql' && !empty($database) && !empty($username)) {
+                $testRes = test_mysql_pdo($host, $port, $database, $username, $password, $charset);
+                if ($testRes['success']) {
+                    try {
+                        $dsn = "mysql:host={$host};port={$port};dbname={$database};charset={$charset}";
+                        $pdo = new PDO($dsn, $username, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+                        init_mysql_tables($pdo);
+                        $cfg['connected'] = true;
+                    } catch (Exception $e) {
+                        $cfg['connected'] = false;
+                    }
+                } else {
+                    $cfg['connected'] = false;
+                }
+            }
+
+            save_db_config($cfg);
+
+            $maskedCfg = $cfg;
+            $maskedCfg['password'] = '';
+            $maskedCfg['passwordMasked'] = !empty($cfg['password']) ? '••••••••••••' : '';
+
+            echo json_encode([
+                'success' => true,
+                'message' => "Database configuration saved. Active driver: " . strtoupper($newType),
+                'config' => $maskedCfg
+            ]);
+            exit;
+        }
+
+        if ($action === 'migrate') {
+            $direction = $input['direction'] ?? 'json_to_mysql';
+            $cfg = get_db_config();
+
+            if (($cfg['type'] ?? 'json') !== 'mysql' && empty($input['force'])) {
+                // Still allow migration if user wants to seed MySQL
+            }
+
+            $host = $cfg['host'] ?? 'localhost';
+            $port = $cfg['port'] ?? 3306;
+            $database = $cfg['database'] ?? '';
+            $username = $cfg['username'] ?? '';
+            $password = $cfg['password'] ?? '';
+            $charset = $cfg['charset'] ?? 'utf8mb4';
+
+            try {
+                $dsn = "mysql:host={$host};port={$port};dbname={$database};charset={$charset}";
+                $pdo = new PDO($dsn, $username, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+                init_mysql_tables($pdo);
+
+                $migratedCounts = [];
+
+                if ($direction === 'json_to_mysql') {
+                    // Users
+                    if (!empty($db['users'])) {
+                        $stmt = $pdo->prepare("INSERT INTO `crm_users` (`id`, `name`, `email`, `role`, `phone`, `disabled`, `data`) VALUES (:id, :name, :email, :role, :phone, :disabled, :data) ON DUPLICATE KEY UPDATE `name`=VALUES(`name`), `role`=VALUES(`role`), `data`=VALUES(`data`)");
+                        foreach ($db['users'] as $u) {
+                            $stmt->execute([
+                                ':id' => $u['id'],
+                                ':name' => $u['name'] ?? '',
+                                ':email' => $u['email'] ?? '',
+                                ':role' => $u['role'] ?? 'consultant',
+                                ':phone' => $u['phone'] ?? '',
+                                ':disabled' => !empty($u['disabled']) ? 1 : 0,
+                                ':data' => json_encode($u)
+                            ]);
+                        }
+                        $migratedCounts['users'] = count($db['users']);
+                    }
+
+                    // Leads
+                    if (!empty($db['leads'])) {
+                        $stmt = $pdo->prepare("INSERT INTO `crm_leads` (`id`, `business_name`, `contact_person`, `phone`, `status`, `consultant_id`, `final_deal_amount`, `manager_review`, `data`) VALUES (:id, :bname, :cperson, :phone, :status, :cid, :amt, :mrev, :data) ON DUPLICATE KEY UPDATE `status`=VALUES(`status`), `final_deal_amount`=VALUES(`final_deal_amount`), `manager_review`=VALUES(`manager_review`), `data`=VALUES(`data`)");
+                        foreach ($db['leads'] as $l) {
+                            $stmt->execute([
+                                ':id' => $l['id'],
+                                ':bname' => $l['businessName'] ?? '',
+                                ':cperson' => $l['contactPerson'] ?? '',
+                                ':phone' => $l['phone'] ?? '',
+                                ':status' => $l['status'] ?? 'New / Contacted',
+                                ':cid' => $l['consultantId'] ?? '',
+                                ':amt' => $l['finalDealAmount'] ?? null,
+                                ':mrev' => $l['managerReview'] ?? 'Pending',
+                                ':data' => json_encode($l)
+                            ]);
+                        }
+                        $migratedCounts['leads'] = count($db['leads']);
+                    }
+
+                    // Projects
+                    if (!empty($db['projects'])) {
+                        $stmt = $pdo->prepare("INSERT INTO `crm_projects` (`id`, `name`, `status`, `data`) VALUES (:id, :name, :status, :data) ON DUPLICATE KEY UPDATE `status`=VALUES(`status`), `data`=VALUES(`data`)");
+                        foreach ($db['projects'] as $p) {
+                            $stmt->execute([
+                                ':id' => $p['id'],
+                                ':name' => $p['name'] ?? '',
+                                ':status' => $p['status'] ?? 'active',
+                                ':data' => json_encode($p)
+                            ]);
+                        }
+                        $migratedCounts['projects'] = count($db['projects']);
+                    }
+
+                    // Documents
+                    if (!empty($db['documents'])) {
+                        $stmt = $pdo->prepare("INSERT INTO `crm_documents` (`id`, `doc_number`, `type`, `business_name`, `total`, `status`, `data`) VALUES (:id, :docno, :type, :bname, :total, :status, :data) ON DUPLICATE KEY UPDATE `status`=VALUES(`status`), `data`=VALUES(`data`)");
+                        foreach ($db['documents'] as $doc) {
+                            $stmt->execute([
+                                ':id' => $doc['id'],
+                                ':docno' => $doc['docNumber'] ?? '',
+                                ':type' => $doc['type'] ?? 'quotation',
+                                ':bname' => $doc['businessName'] ?? '',
+                                ':total' => $doc['total'] ?? 0,
+                                ':status' => $doc['status'] ?? 'Draft',
+                                ':data' => json_encode($doc)
+                            ]);
+                        }
+                        $migratedCounts['documents'] = count($db['documents']);
+                    }
+
+                    echo json_encode([
+                        'success' => true,
+                        'message' => 'Successfully synchronized all local JSON records into MySQL tables.',
+                        'migrated' => $migratedCounts
+                    ]);
+                    exit;
+                }
+            } catch (Exception $e) {
+                http_response_code(500);
+                echo json_encode(['success' => false, 'error' => 'Migration failed: ' . $e->getMessage()]);
+                exit;
+            }
+        }
+
+        if ($action === 'backup') {
+            if (!is_dir($backupsDir)) mkdir($backupsDir, 0777, true);
+            $ts = date('Y-m-d-His');
+            $bName = "crm-snapshot-{$ts}.json";
+            $target = $backupsDir . '/' . $bName;
+
+            file_put_contents($target, json_encode($db, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+            $size = filesize($target);
+
+            echo json_encode([
+                'success' => true,
+                'message' => "Created snapshot {$bName}",
+                'backup' => [
+                    'fileName' => $bName,
+                    'size' => $size,
+                    'createdAt' => date('c'),
+                    'type' => 'json'
+                ]
+            ]);
+            exit;
+        }
+
+        if ($action === 'export_sql') {
+            $ts = date('Ymd_His');
+            $fileName = "ifleon_crm_dump_{$ts}.sql";
+
+            $sql = "-- ========================================================\n";
+            $sql .= "-- iFleon Enterprise CRM Database SQL Dump\n";
+            $sql .= "-- Generated: " . date('Y-m-d H:i:s T') . "\n";
+            $sql .= "-- Subdomain: crm.ifleon.com\n";
+            $sql .= "-- Platform: Hostinger CloudLinux / PHP 8.2\n";
+            $sql .= "-- ========================================================\n\n";
+            $sql .= "SET NAMES utf8mb4;\n";
+            $sql .= "SET FOREIGN_KEY_CHECKS = 0;\n\n";
+
+            // crm_users
+            $sql .= "-- ----------------------------\n-- Table structure for crm_users\n-- ----------------------------\n";
+            $sql .= "CREATE TABLE IF NOT EXISTS `crm_users` (\n  `id` varchar(64) NOT NULL,\n  `name` varchar(128) NOT NULL,\n  `email` varchar(128) NOT NULL,\n  `role` varchar(32) NOT NULL,\n  `phone` varchar(32) DEFAULT NULL,\n  `disabled` tinyint(1) NOT NULL DEFAULT '0',\n  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,\n  `data` longtext NOT NULL,\n  PRIMARY KEY (`id`),\n  KEY `idx_email` (`email`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;\n\n";
+            foreach (($db['users'] ?? []) as $u) {
+                $j = str_replace("'", "\\'", json_encode($u));
+                $sql .= "INSERT INTO `crm_users` (`id`, `name`, `email`, `role`, `phone`, `disabled`, `data`) VALUES ('{$u['id']}', '" . addslashes($u['name'] ?? '') . "', '{$u['email']}', '{$u['role']}', '{$u['phone']}', " . (!empty($u['disabled']) ? 1 : 0) . ", '{$j}') ON DUPLICATE KEY UPDATE `data` = VALUES(`data`);\n";
+            }
+            $sql .= "\n";
+
+            // crm_leads
+            $sql .= "-- ----------------------------\n-- Table structure for crm_leads\n-- ----------------------------\n";
+            $sql .= "CREATE TABLE IF NOT EXISTS `crm_leads` (\n  `id` varchar(64) NOT NULL,\n  `business_name` varchar(255) NOT NULL,\n  `contact_person` varchar(128) NOT NULL,\n  `phone` varchar(32) NOT NULL,\n  `status` varchar(64) NOT NULL,\n  `consultant_id` varchar(64) DEFAULT NULL,\n  `final_deal_amount` decimal(12,2) DEFAULT NULL,\n  `manager_review` varchar(32) DEFAULT 'Pending',\n  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,\n  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n  `data` longtext NOT NULL,\n  PRIMARY KEY (`id`),\n  KEY `idx_status` (`status`),\n  KEY `idx_consultant` (`consultant_id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;\n\n";
+            foreach (($db['leads'] ?? []) as $l) {
+                $j = str_replace("'", "\\'", json_encode($l));
+                $amt = isset($l['finalDealAmount']) && is_numeric($l['finalDealAmount']) ? $l['finalDealAmount'] : 'NULL';
+                $sql .= "INSERT INTO `crm_leads` (`id`, `business_name`, `contact_person`, `phone`, `status`, `consultant_id`, `final_deal_amount`, `manager_review`, `data`) VALUES ('{$l['id']}', '" . addslashes($l['businessName'] ?? '') . "', '" . addslashes($l['contactPerson'] ?? '') . "', '{$l['phone']}', '{$l['status']}', '{$l['consultantId']}', {$amt}, '{$l['managerReview']}', '{$j}') ON DUPLICATE KEY UPDATE `data` = VALUES(`data`);\n";
+            }
+            $sql .= "\n";
+
+            // crm_projects
+            $sql .= "-- ----------------------------\n-- Table structure for crm_projects\n-- ----------------------------\n";
+            $sql .= "CREATE TABLE IF NOT EXISTS `crm_projects` (\n  `id` varchar(64) NOT NULL,\n  `name` varchar(255) NOT NULL,\n  `status` varchar(32) NOT NULL,\n  `data` longtext NOT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;\n\n";
+            foreach (($db['projects'] ?? []) as $p) {
+                $j = str_replace("'", "\\'", json_encode($p));
+                $sql .= "INSERT INTO `crm_projects` (`id`, `name`, `status`, `data`) VALUES ('{$p['id']}', '" . addslashes($p['name'] ?? '') . "', '{$p['status']}', '{$j}') ON DUPLICATE KEY UPDATE `data` = VALUES(`data`);\n";
+            }
+            $sql .= "\n";
+
+            // crm_documents
+            $sql .= "-- ----------------------------\n-- Table structure for crm_documents\n-- ----------------------------\n";
+            $sql .= "CREATE TABLE IF NOT EXISTS `crm_documents` (\n  `id` varchar(64) NOT NULL,\n  `doc_number` varchar(64) NOT NULL,\n  `type` varchar(32) NOT NULL,\n  `business_name` varchar(255) NOT NULL,\n  `total` decimal(12,2) NOT NULL,\n  `status` varchar(32) NOT NULL,\n  `data` longtext NOT NULL,\n  PRIMARY KEY (`id`),\n  KEY `idx_doc_number` (`doc_number`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;\n\n";
+            foreach (($db['documents'] ?? []) as $d) {
+                $j = str_replace("'", "\\'", json_encode($d));
+                $sql .= "INSERT INTO `crm_documents` (`id`, `doc_number`, `type`, `business_name`, `total`, `status`, `data`) VALUES ('{$d['id']}', '{$d['docNumber']}', '{$d['type']}', '" . addslashes($d['businessName'] ?? '') . "', {$d['total']}, '{$d['status']}', '{$j}') ON DUPLICATE KEY UPDATE `data` = VALUES(`data`);\n";
+            }
+            $sql .= "\n";
+
+            $sql .= "SET FOREIGN_KEY_CHECKS = 1;\n";
+
+            echo json_encode([
+                'success' => true,
+                'fileName' => $fileName,
+                'sql' => $sql,
+                'size' => strlen($sql)
+            ]);
+            exit;
+        }
+    }
+}
+
+
 // 9. /api/ai
 if ($resource === 'ai') {
     $input = get_input();

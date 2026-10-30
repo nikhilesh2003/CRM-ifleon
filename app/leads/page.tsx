@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useCRM } from '@/context/CRMContext';
+import { useToast } from '@/context/ToastContext';
 import { Lead, LeadStatus, Project } from '@/lib/types';
 import { exportLeadsToExcel, parseLeadsFromExcel } from '@/lib/export-utils';
 import {
@@ -26,6 +27,7 @@ import {
   MessageSquare,
   AlertCircle,
   CheckCircle2,
+  X,
 } from 'lucide-react';
 
 export default function LeadsPageWrapper() {
@@ -38,6 +40,7 @@ export default function LeadsPageWrapper() {
 
 function LeadsPage() {
   const { currentUser } = useCRM();
+  const { toast } = useToast();
   const searchParams = useSearchParams();
 
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -162,10 +165,10 @@ function LeadsPage() {
         });
       }
       fetchLeads();
-      alert(`Successfully imported ${parsed.length} leads!`);
+      toast.success(`Successfully imported ${parsed.length} dealership leads!`, 'Import Complete');
     } catch (err) {
       console.error(err);
-      alert('Error parsing Excel file. Please ensure standard column headers.');
+      toast.error('Error parsing Excel file. Please ensure standard column headers.', 'Import Error');
     }
   };
 
@@ -228,6 +231,7 @@ function LeadsPage() {
       }
       setIsModalOpen(false);
       fetchLeads();
+      toast.success('Dealership lead logged successfully.', 'Lead Saved');
     } catch (err: any) {
       setErrorMsg(err.message || 'Something went wrong');
     }
@@ -731,9 +735,10 @@ function LeadsPage() {
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 text-xs"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition p-1"
+                title="Close"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 

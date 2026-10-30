@@ -17,13 +17,21 @@ const phpRouterSrc = path.join(__dirname, 'remote_api_router.php');
 fs.copyFileSync(phpRouterSrc, path.join(apiDir, 'index.php'));
 console.log('   Copied api/index.php');
 
-// Ensure out/data directory exists and copy crm-store.json
+// Ensure out/data directory exists and copy crm-store.json & db-config.json
 const outDataDir = path.join(outDir, 'data');
 if (!fs.existsSync(outDataDir)) fs.mkdirSync(outDataDir, { recursive: true });
+const backupsDir = path.join(outDataDir, 'backups');
+if (!fs.existsSync(backupsDir)) fs.mkdirSync(backupsDir, { recursive: true });
+
 const srcStore = path.join(rootDir, 'data', 'crm-store.json');
 if (fs.existsSync(srcStore)) {
   fs.copyFileSync(srcStore, path.join(outDataDir, 'crm-store.json'));
   console.log('   Copied data/crm-store.json (' + fs.statSync(srcStore).size + ' bytes)');
+}
+const srcDbConfig = path.join(rootDir, 'data', 'db-config.json');
+if (fs.existsSync(srcDbConfig)) {
+  fs.copyFileSync(srcDbConfig, path.join(outDataDir, 'db-config.json'));
+  console.log('   Copied data/db-config.json');
 }
 
 // Copy page.html to directory/index.html so both /route and /route/ work with 0 redirects!
@@ -108,22 +116,31 @@ conn.on('ready', () => {
         `cd ${remoteTargetDir}`,
         'pkill -f "entry.js" 2>/dev/null || true',
         'rm -rf wp-admin wp-includes wp-content wp-*.php index.php xmlrpc.php default.php crm.sock crm.log',
-        'tar -xzf deploy_site.tar.gz',
+        'tar -xzf deploy_site.tar.gz --overwrite',
         'rm -f deploy_site.tar.gz',
         'chmod -R 755 .',
         'chmod -R 777 data',
-        'mkdir -p uploads',
-        'chmod -R 777 uploads',
+        'mkdir -p uploads data/backups',
+        'chmod -R 777 uploads data/backups',
         'chmod 644 .htaccess',
         'echo "=== DEPLOYMENT COMPLETE ==="',
         'ls -la api',
+        'wc -l api/index.php',
       ].join(' && ');
 
       conn.exec(cmd, (exErr, stream) => {
         if (exErr) throw exErr;
         stream.on('close', (code) => {
           console.log(`Remote extraction completed with code ${code}`);
-          conn.end();
+          // Also explicitly upload out/api/index.php via sftp to be 100% sure
+          const localPhp = path.join(outDir, 'api', 'index.php');
+          const remotePhp = remoteTargetDir + '/api/index.php';
+          console.log('Directly syncing api/index.php via SFTP...');
+          sftp.fastPut(localPhp, remotePhp, (syncErr) => {
+            if (syncErr) console.error('Direct PHP sync error:', syncErr);
+            else console.log('Successfully verified and uploaded api/index.php directly via SFTP!');
+            conn.end();
+          });
         });
         stream.on('data', d => process.stdout.write(d.toString()));
         stream.stderr.on('data', d => process.stderr.write(d.toString()));

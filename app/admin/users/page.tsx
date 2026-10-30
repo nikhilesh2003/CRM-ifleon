@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useCRM } from '@/context/CRMContext';
+import { useToast } from '@/context/ToastContext';
 import { User, UserRole } from '@/lib/types';
 import {
   UserCog,
@@ -19,6 +20,7 @@ import {
 
 export default function UserManagementPage() {
   const { currentUser } = useCRM();
+  const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -93,9 +95,10 @@ export default function UserManagementPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: user.id, action: 'reset_password', currentUser }),
       });
-      alert(`Password reset link dispatched to ${user.email}`);
+      toast.success(`Password reset credentials dispatched to ${user.email}`, 'Reset Link Sent');
     } catch (e) {
       console.error(e);
+      toast.error('Failed to dispatch password reset request.');
     }
   };
 

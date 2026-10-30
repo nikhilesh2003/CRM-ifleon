@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCRM } from '@/context/CRMContext';
+import { useToast } from '@/context/ToastContext';
 import { Lead, StandardScopeModule, PriceListItem, QuotationLineItem } from '@/lib/types';
 import { generatePowerPointQuotation } from '@/lib/export-utils';
 import {
@@ -35,6 +36,7 @@ function NewQuotationPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currentUser, settings } = useCRM();
+  const { toast } = useToast();
 
   const [leads, setLeads] = useState<Lead[]>([]);
   const [selectedLeadId, setSelectedLeadId] = useState<string>(searchParams.get('leadId') || '');
@@ -212,7 +214,7 @@ function NewQuotationPage() {
   // Handle Form Submission & Optional Immediate PPTX Download
   const handleCreateDocument = async (downloadImmediately = false) => {
     if (!selectedLead) {
-      alert('Please select a client lead record.');
+      toast.warning('Please select a client lead record before generating proposal.', 'Selection Required');
       return;
     }
 
@@ -250,16 +252,17 @@ function NewQuotationPage() {
 
       const data = await res.json();
       if (res.ok && data.document) {
+        toast.success(`Proposal document ${data.document.docNumber || ''} created successfully!`, 'Document Created');
         if (downloadImmediately && settings) {
           await generatePowerPointQuotation(data.document, settings);
         }
         router.push('/quotations');
       } else {
-        alert(data.error || 'Failed to create document');
+        toast.error(data.error || 'Failed to create document', 'Submission Error');
       }
     } catch (e) {
       console.error(e);
-      alert('Error creating document');
+      toast.error('Error creating commercial proposal document.', 'Network Error');
     } finally {
       setIsSubmitting(false);
     }

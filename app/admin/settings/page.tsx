@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useCRM } from '@/context/CRMContext';
+import { useToast } from '@/context/ToastContext';
 import {
   CompanySettings,
   CRMTheme,
@@ -11,6 +12,9 @@ import {
   PriceListItem,
   EmailConfig,
   EmailLogEntry,
+  DatabaseConfig,
+  DatabaseStatus,
+  BackupSnapshot,
 } from '@/lib/types';
 import {
   Settings,
@@ -47,6 +51,13 @@ import {
   AlertTriangle,
   RefreshCw,
   Globe,
+  Database,
+  HardDrive,
+  Download,
+  UploadCloud,
+  FileCode,
+  Activity,
+  CheckCheck,
 } from 'lucide-react';
 
 export default function AdminSettingsWrapper() {
@@ -59,9 +70,10 @@ export default function AdminSettingsWrapper() {
 
 function AdminSettingsPage() {
   const { currentUser, settings: ctxSettings, refreshSettings, theme: activeTheme, setTheme } = useCRM();
+  const { toast } = useToast();
   const searchParams = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState<'company' | 'email' | 'theme' | 'ai' | 'scope' | 'price'>(
+  const [activeTab, setActiveTab] = useState<'company' | 'email' | 'database' | 'theme' | 'ai' | 'scope' | 'price'>(
     (searchParams.get('tab') as any) || 'company'
   );
 
@@ -106,6 +118,30 @@ function AdminSettingsPage() {
   const [emailLogs, setEmailLogs] = useState<EmailLogEntry[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
 
+  // Database Management state
+  const [dbStatus, setDbStatus] = useState<DatabaseStatus | null>(null);
+  const [loadingDb, setLoadingDb] = useState(false);
+  const [dbConfig, setDbConfig] = useState<DatabaseConfig>({
+    type: 'json',
+    host: 'localhost',
+    port: 3306,
+    database: 'u408450631_crm',
+    username: 'u408450631_admin',
+    password: '',
+    charset: 'utf8mb4',
+  });
+  const [showDbPassword, setShowDbPassword] = useState(false);
+  const [testingDb, setTestingDb] = useState(false);
+  const [testDbResult, setTestDbResult] = useState<{
+    success: boolean;
+    message: string;
+    latencyMs?: number;
+  } | null>(null);
+  const [savingDb, setSavingDb] = useState(false);
+  const [migratingDb, setMigratingDb] = useState(false);
+  const [creatingBackup, setCreatingBackup] = useState(false);
+  const [exportingSql, setExportingSql] = useState(false);
+
   const [themes, setThemes] = useState<CRMTheme[]>([]);
   const [activeThemeId, setActiveThemeId] = useState('theme-default');
   const [aiProviders, setAiProviders] = useState<AIProviderConfig[]>([]);
@@ -125,6 +161,28 @@ function AdminSettingsPage() {
   const [themePrompt, setThemePrompt] = useState('clean and professional, deep blue, rounded cards');
   const [aiGeneratedTheme, setAiGeneratedTheme] = useState<CRMTheme | null>(null);
   const [aiGenerating, setAiGenerating] = useState(false);
+
+  const fetchDbStatus = async () => {
+    try {
+      setLoadingDb(true);
+      const res = await fetch('/api/admin/database');
+      if (res.ok) {
+        const data: DatabaseStatus = await res.json();
+        setDbStatus(data);
+        if (data.config) {
+          setDbConfig((prev) => ({
+            ...prev,
+            ...data.config,
+            password: data.config.password || prev.password || '',
+          }));
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching database status:', err);
+    } finally {
+      setLoadingDb(false);
+    }
+  };
 
   useEffect(() => {
     async function loadData() {
@@ -150,6 +208,8 @@ function AdminSettingsPage() {
           const emailRes = await fetch('/api/email').then((r) => r.json());
           if (emailRes.logs) setEmailLogs(emailRes.logs);
         } catch (_) {}
+
+        fetchDbStatus();
       } catch (e) {
         console.error(e);
       }
@@ -357,6 +417,176 @@ function AdminSettingsPage() {
     if (found) setTheme(found);
   };
 
+  // Database handlers
+  const handleTestDb = async () => {
+    if (!dbConfig.database || !dbConfig.username) {
+      toast.warning('Input Required', 'Please enter both database name and username.');
+      return;
+    }
+    setTestingDb(true);
+    setTestDbResult(null);
+    try {
+      const res = await fetch('/api/admin/database', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'test',
+          host: dbConfig.host,
+          port: dbConfig.port,
+          database: dbConfig.database,
+          username: dbConfig.username,
+          password: dbConfig.password,
+          charset: dbConfig.charset,
+          currentUser,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTestDbResult({
+          success: true,
+          message: data.message || 'Database handshake verified successfully.',
+          latencyMs: data.latencyMs,
+        });
+        toast.success('Database Connected', data.message || 'MySQL handshake completed successfully.');
+      } else {
+        setTestDbResult({
+          success: false,
+          message: data.error || 'Failed to establish connection to database.',
+          latencyMs: data.latencyMs,
+        });
+        toast.error('Connection Failed', data.error || 'Database handshake failed.');
+      }
+    } catch (err: any) {
+      setTestDbResult({
+        success: false,
+        message: err.message || 'Network error communicating with database test runner.',
+      });
+      toast.error('Test Error', err.message || 'Failed to execute database test.');
+    } finally {
+      setTestingDb(false);
+    }
+  };
+
+  const handleSaveDb = async () => {
+    setSavingDb(true);
+    try {
+      const res = await fetch('/api/admin/database', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'save',
+          type: dbConfig.type,
+          host: dbConfig.host,
+          port: dbConfig.port,
+          database: dbConfig.database,
+          username: dbConfig.username,
+          password: dbConfig.password,
+          charset: dbConfig.charset,
+          currentUser,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Configuration Saved', data.message || 'Database settings updated successfully.');
+        await fetchDbStatus();
+      } else {
+        toast.error('Save Failed', data.error || 'Could not save database settings.');
+      }
+    } catch (err: any) {
+      toast.error('Error', err.message || 'Failed to save configuration.');
+    } finally {
+      setSavingDb(false);
+    }
+  };
+
+  const handleMigrateDb = async () => {
+    setMigratingDb(true);
+    try {
+      const res = await fetch('/api/admin/database', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'migrate',
+          direction: 'json_to_mysql',
+          currentUser,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const counts = data.migrated || {};
+        const summary = Object.entries(counts)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join(', ');
+        toast.success('Migration Complete', `Data synced to MySQL (${summary || 'All records'}).`);
+        await fetchDbStatus();
+      } else {
+        toast.error('Migration Failed', data.error || 'Data migration encountered an error.');
+      }
+    } catch (err: any) {
+      toast.error('Migration Error', err.message || 'Failed to complete migration.');
+    } finally {
+      setMigratingDb(false);
+    }
+  };
+
+  const handleCreateBackup = async () => {
+    setCreatingBackup(true);
+    try {
+      const res = await fetch('/api/admin/database', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'backup',
+          currentUser,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Snapshot Created', data.message || 'Backup snapshot created successfully.');
+        await fetchDbStatus();
+      } else {
+        toast.error('Backup Failed', data.error || 'Could not create backup snapshot.');
+      }
+    } catch (err: any) {
+      toast.error('Backup Error', err.message || 'Failed to trigger backup.');
+    } finally {
+      setCreatingBackup(false);
+    }
+  };
+
+  const handleExportSql = async () => {
+    setExportingSql(true);
+    try {
+      const res = await fetch('/api/admin/database', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'export_sql',
+          currentUser,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.sql) {
+        const blob = new Blob([data.sql], { type: 'application/sql' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = data.fileName || 'ifleon_crm_database_dump.sql';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success('SQL Dump Ready', `Downloaded ${data.fileName} (${(data.size / 1024).toFixed(1)} KB)`);
+      } else {
+        toast.error('Export Failed', data.error || 'Failed to generate SQL export.');
+      }
+    } catch (err: any) {
+      toast.error('Export Error', err.message || 'Could not download SQL dump.');
+    } finally {
+      setExportingSql(false);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
       {/* Page Header */}
@@ -367,7 +597,7 @@ function AdminSettingsPage() {
             <span>Enterprise System Settings</span>
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Manage company profile, brand logos, AI providers, and commercial master lists
+            Manage company profile, brand logos, database infrastructure, and commercial master lists
           </p>
         </div>
 
@@ -392,6 +622,7 @@ function AdminSettingsPage() {
         {[
           { id: 'company', label: 'Company Profile & Brand Logos', icon: Building2 },
           { id: 'email', label: 'Email & Messaging Integration', icon: Mail },
+          { id: 'database', label: 'Database & Cloud Storage', icon: Database },
           { id: 'theme', label: 'Appearance & Theme Studio', icon: Palette },
           { id: 'ai', label: 'AI Fallback Chain & Keys', icon: Cpu },
           { id: 'scope', label: 'Standard Scope Master List', icon: Layers },
@@ -1418,6 +1649,500 @@ function AdminSettingsPage() {
                             }`}
                           >
                             {log.status === 'sent' ? 'Delivered' : 'Failed'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB: Database & Cloud Infrastructure */}
+      {activeTab === 'database' && (
+        <div className="space-y-6">
+          {/* Card 1: Infrastructure Overview & Engine Telemetry */}
+          <div className="crm-card p-5 space-y-5 bg-white dark:bg-[#111925] border border-slate-200 dark:border-[#1E2A3E] rounded-xl shadow-xs">
+            <div className="border-b border-slate-100 dark:border-[#1E2A3E] pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  <Database className="w-4 h-4 text-blue-600" />
+                  <span>Database & Storage Architecture</span>
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Real-time telemetry, storage driver status, and database connectivity on Hostinger CloudLinux
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-mono font-bold flex items-center gap-1.5 uppercase ${
+                    dbStatus?.status === 'connected'
+                      ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800'
+                      : 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-800'
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${dbStatus?.status === 'connected' ? 'bg-emerald-500' : 'bg-rose-500'} animate-pulse`} />
+                  <span>
+                    {dbStatus?.activeDriver === 'mysql'
+                      ? dbStatus?.status === 'connected'
+                        ? 'MySQL Connected'
+                        : 'MySQL Offline'
+                      : 'JSON Lakehouse Active'}
+                  </span>
+                </span>
+
+                <button
+                  onClick={fetchDbStatus}
+                  disabled={loadingDb}
+                  className="px-2.5 py-1 rounded-md text-xs font-medium border border-slate-200 dark:border-[#1E2A3E] hover:bg-slate-50 dark:hover:bg-[#172132] text-slate-600 dark:text-slate-300 flex items-center gap-1.5 transition cursor-pointer"
+                  title="Refresh Database Status"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loadingDb ? 'animate-spin' : ''}`} />
+                  <span>Refresh</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Telemetry Metric Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+              <div className="p-3.5 rounded-lg border border-slate-200 dark:border-[#1E2A3E] bg-slate-50/50 dark:bg-[#172132]/40">
+                <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                  <span>Active Engine</span>
+                  <Database className="w-3.5 h-3.5 text-blue-500" />
+                </div>
+                <div className="text-base font-bold text-slate-900 dark:text-white mt-1">
+                  {dbConfig.type === 'mysql' ? 'MySQL 8.2 Relational' : 'Atomic JSON Lakehouse'}
+                </div>
+                <div className="text-[11px] font-mono text-slate-500 mt-0.5">
+                  {dbConfig.type === 'mysql' ? 'ACID Transactional' : 'High-Resilience Local Store'}
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-lg border border-slate-200 dark:border-[#1E2A3E] bg-slate-50/50 dark:bg-[#172132]/40">
+                <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                  <span>Total Records</span>
+                  <Layers className="w-3.5 h-3.5 text-emerald-500" />
+                </div>
+                <div className="text-base font-bold text-slate-900 dark:text-white mt-1">
+                  {dbStatus?.tables?.reduce((sum, t) => sum + t.count, 0) || 0} Entities
+                </div>
+                <div className="text-[11px] font-mono text-slate-500 mt-0.5">
+                  Across {dbStatus?.tables?.length || 0} Schemas
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-lg border border-slate-200 dark:border-[#1E2A3E] bg-slate-50/50 dark:bg-[#172132]/40">
+                <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                  <span>Storage Size</span>
+                  <HardDrive className="w-3.5 h-3.5 text-purple-500" />
+                </div>
+                <div className="text-base font-bold text-slate-900 dark:text-white mt-1">
+                  {((dbStatus?.fileSizeBytes || 0) / 1024).toFixed(1)} KB
+                </div>
+                <div className="text-[11px] font-mono text-slate-500 mt-0.5">
+                  Compact JSON Payload
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-lg border border-slate-200 dark:border-[#1E2A3E] bg-slate-50/50 dark:bg-[#172132]/40">
+                <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                  <span>Server Node</span>
+                  <Server className="w-3.5 h-3.5 text-amber-500" />
+                </div>
+                <div className="text-base font-bold text-slate-900 dark:text-white mt-1">
+                  crm.ifleon.com
+                </div>
+                <div className="text-[11px] font-mono text-slate-500 mt-0.5">
+                  Hostinger CloudLinux / PHP 8.2
+                </div>
+              </div>
+            </div>
+
+            {/* Entity Record Breakdown */}
+            <div className="p-3.5 rounded-lg border border-slate-200 dark:border-[#1E2A3E] bg-white dark:bg-[#111925] space-y-2">
+              <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                <span>Synchronized Entity Records</span>
+                <span className="text-[11px] font-mono text-slate-500">Live counts</span>
+              </div>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {dbStatus?.tables?.map((t) => (
+                  <div
+                    key={t.table}
+                    className="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-[#172132] border border-slate-200 dark:border-[#1E2A3E] text-xs flex items-center gap-2"
+                  >
+                    <span className="font-medium text-slate-700 dark:text-slate-300 capitalize">{t.table}:</span>
+                    <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{t.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Hostinger MySQL / Cloud Database Configuration */}
+          <div className="crm-card p-5 space-y-5 bg-white dark:bg-[#111925] border border-slate-200 dark:border-[#1E2A3E] rounded-xl shadow-xs">
+            <div className="border-b border-slate-100 dark:border-[#1E2A3E] pb-3">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <Server className="w-4 h-4 text-blue-600" />
+                <span>Hostinger MySQL / Relational Database Setup</span>
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Link your Hostinger cPanel / Cloud MySQL database credentials. The CRM will automatically provision schemas and maintain dual-store sync.
+              </p>
+            </div>
+
+            {/* Storage Engine Toggle */}
+            <div className="p-4 rounded-lg bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 space-y-3">
+              <div className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wide">
+                Select Active Storage Engine
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div
+                  onClick={() => setDbConfig({ ...dbConfig, type: 'json' })}
+                  className={`p-3.5 rounded-lg border cursor-pointer transition flex items-start gap-3 ${
+                    dbConfig.type === 'json'
+                      ? 'border-blue-600 bg-white dark:bg-[#111925] shadow-xs'
+                      : 'border-slate-200 dark:border-[#1E2A3E] bg-white/60 dark:bg-[#111925]/60 hover:border-slate-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="dbType"
+                    checked={dbConfig.type === 'json'}
+                    onChange={() => setDbConfig({ ...dbConfig, type: 'json' })}
+                    className="mt-0.5 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  />
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <span>Atomic JSON Lakehouse (Default)</span>
+                      <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 font-semibold">
+                        Zero Config
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                      High-speed file-based atomic store with zero latency and zero database setup required. Ideal for rapid deployments.
+                    </p>
+                  </div>
+                </div>
+
+                <div
+                  onClick={() => setDbConfig({ ...dbConfig, type: 'mysql' })}
+                  className={`p-3.5 rounded-lg border cursor-pointer transition flex items-start gap-3 ${
+                    dbConfig.type === 'mysql'
+                      ? 'border-blue-600 bg-white dark:bg-[#111925] shadow-xs'
+                      : 'border-slate-200 dark:border-[#1E2A3E] bg-white/60 dark:bg-[#111925]/60 hover:border-slate-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="dbType"
+                    checked={dbConfig.type === 'mysql'}
+                    onChange={() => setDbConfig({ ...dbConfig, type: 'mysql' })}
+                    className="mt-0.5 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  />
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <span>Hostinger MySQL / MariaDB</span>
+                      <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-400 font-semibold">
+                        Enterprise
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                      Connect to Hostinger MySQL via native PHP PDO. Supports phpMyAdmin access, relational SQL queries, and multi-user concurrency.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Connection Credentials Form */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Database Host / IP
+                </label>
+                <input
+                  type="text"
+                  value={dbConfig.host}
+                  onChange={(e) => setDbConfig({ ...dbConfig, host: e.target.value })}
+                  placeholder="localhost or 127.0.0.1"
+                  className="w-full px-3 py-2 text-xs font-mono rounded-lg border border-slate-200 dark:border-[#1E2A3E] bg-slate-50/50 dark:bg-[#172132] text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">Usually 'localhost' on Hostinger</span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Port Number
+                </label>
+                <input
+                  type="number"
+                  value={dbConfig.port}
+                  onChange={(e) => setDbConfig({ ...dbConfig, port: Number(e.target.value) || 3306 })}
+                  placeholder="3306"
+                  className="w-full px-3 py-2 text-xs font-mono rounded-lg border border-slate-200 dark:border-[#1E2A3E] bg-slate-50/50 dark:bg-[#172132] text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">Default MySQL port: 3306</span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Database Name
+                </label>
+                <input
+                  type="text"
+                  value={dbConfig.database}
+                  onChange={(e) => setDbConfig({ ...dbConfig, database: e.target.value })}
+                  placeholder="u408450631_crm"
+                  className="w-full px-3 py-2 text-xs font-mono rounded-lg border border-slate-200 dark:border-[#1E2A3E] bg-slate-50/50 dark:bg-[#172132] text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">e.g. u408450631_crm</span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Database Username
+                </label>
+                <input
+                  type="text"
+                  value={dbConfig.username}
+                  onChange={(e) => setDbConfig({ ...dbConfig, username: e.target.value })}
+                  placeholder="u408450631_admin"
+                  className="w-full px-3 py-2 text-xs font-mono rounded-lg border border-slate-200 dark:border-[#1E2A3E] bg-slate-50/50 dark:bg-[#172132] text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">e.g. u408450631_admin</span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Database Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showDbPassword ? 'text' : 'password'}
+                    value={dbConfig.password || ''}
+                    onChange={(e) => setDbConfig({ ...dbConfig, password: e.target.value })}
+                    placeholder={dbConfig.passwordMasked || 'Enter password'}
+                    className="w-full px-3 py-2 text-xs font-mono rounded-lg border border-slate-200 dark:border-[#1E2A3E] bg-slate-50/50 dark:bg-[#172132] text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 pr-9"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowDbPassword(!showDbPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                  >
+                    {showDbPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <span className="text-[10px] text-slate-400 mt-1 block">Stored securely in data/db-config.json</span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Character Set / Collation
+                </label>
+                <input
+                  type="text"
+                  value={dbConfig.charset || 'utf8mb4'}
+                  onChange={(e) => setDbConfig({ ...dbConfig, charset: e.target.value })}
+                  placeholder="utf8mb4"
+                  className="w-full px-3 py-2 text-xs font-mono rounded-lg border border-slate-200 dark:border-[#1E2A3E] bg-slate-50/50 dark:bg-[#172132] text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">Full Unicode support (utf8mb4)</span>
+              </div>
+            </div>
+
+            {/* Test Connection Result Banner */}
+            {testDbResult && (
+              <div
+                className={`p-3.5 rounded-lg border text-xs flex items-center justify-between gap-3 ${
+                  testDbResult.success
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
+                    : 'bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {testDbResult.success ? (
+                    <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  )}
+                  <span>{testDbResult.message}</span>
+                </div>
+                {testDbResult.latencyMs !== undefined && (
+                  <span className="font-mono text-[11px] px-2 py-0.5 rounded bg-black/5 dark:bg-white/10 shrink-0">
+                    Latency: {testDbResult.latencyMs} ms
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Action Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-[#1E2A3E]">
+              <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
+                <span>Hostinger PHP 8.2 PDO Handshake • Zero-downtime Fallback</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleTestDb}
+                  disabled={testingDb}
+                  className="px-3.5 py-2 rounded-lg border border-slate-300 dark:border-[#1E2A3E] hover:bg-slate-50 dark:hover:bg-[#172132] text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <Activity className={`w-3.5 h-3.5 text-blue-500 ${testingDb ? 'animate-spin' : ''}`} />
+                  <span>{testingDb ? 'Testing Connection...' : 'Test Database Connection'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSaveDb}
+                  disabled={savingDb}
+                  className="px-4 py-2 rounded-lg bg-blue-700 hover:bg-blue-600 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+                >
+                  <Save className={`w-3.5 h-3.5 ${savingDb ? 'animate-spin' : ''}`} />
+                  <span>{savingDb ? 'Saving...' : 'Save Configuration'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: Data Migration & phpMyAdmin SQL Export Studio */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* Migration Hub */}
+            <div className="crm-card p-5 space-y-4 bg-white dark:bg-[#111925] border border-slate-200 dark:border-[#1E2A3E] rounded-xl shadow-xs">
+              <div className="border-b border-slate-100 dark:border-[#1E2A3E] pb-3">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4 text-emerald-600" />
+                  <span>Two-Way Data Migration Studio</span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Synchronize entities between the JSON data lakehouse and Hostinger MySQL tables.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-[#172132]/60 border border-slate-200 dark:border-[#1E2A3E] text-xs space-y-1.5">
+                  <div className="font-semibold text-slate-800 dark:text-slate-200">Local JSON Store to MySQL Sync</div>
+                  <p className="text-slate-500 text-[11px] leading-relaxed">
+                    Reads all current records from the active JSON store and executes upsert queries into MySQL tables (`crm_users`, `crm_leads`, `crm_projects`, `crm_documents`).
+                  </p>
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={handleMigrateDb}
+                      disabled={migratingDb}
+                      className="px-3.5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                    >
+                      <UploadCloud className={`w-3.5 h-3.5 ${migratingDb ? 'animate-spin' : ''}`} />
+                      <span>{migratingDb ? 'Migrating...' : 'Migrate JSON Store to MySQL'}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* SQL Export & phpMyAdmin Studio */}
+            <div className="crm-card p-5 space-y-4 bg-white dark:bg-[#111925] border border-slate-200 dark:border-[#1E2A3E] rounded-xl shadow-xs">
+              <div className="border-b border-slate-100 dark:border-[#1E2A3E] pb-3">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  <FileCode className="w-4 h-4 text-purple-600" />
+                  <span>phpMyAdmin Standalone SQL Dump</span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Generate pure MySQL DDL and DML statements ready for 1-click import in Hostinger phpMyAdmin.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-[#172132]/60 border border-slate-200 dark:border-[#1E2A3E] text-xs space-y-2">
+                <div className="font-semibold text-slate-800 dark:text-slate-200">Hostinger phpMyAdmin Ready</div>
+                <p className="text-slate-500 text-[11px] leading-relaxed">
+                  Downloads a `.sql` file with table definitions, index structures, foreign key guards, and all record rows. Upload it in Hostinger hPanel / phpMyAdmin / Import tab.
+                </p>
+                <div className="pt-1 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleExportSql}
+                    disabled={exportingSql}
+                    className="px-3.5 py-2 rounded-lg bg-purple-700 hover:bg-purple-600 text-white text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Download className={`w-3.5 h-3.5 ${exportingSql ? 'animate-spin' : ''}`} />
+                    <span>{exportingSql ? 'Generating Dump...' : 'Download MySQL Dump (.sql)'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 4: Point-in-Time Backup Snapshots */}
+          <div className="crm-card p-5 space-y-4 bg-white dark:bg-[#111925] border border-slate-200 dark:border-[#1E2A3E] rounded-xl shadow-xs">
+            <div className="border-b border-slate-100 dark:border-[#1E2A3E] pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  <HardDrive className="w-4 h-4 text-blue-600" />
+                  <span>Point-in-Time Disaster Recovery Snapshots</span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Create timestamped immutable snapshots stored safely in the remote data/backups directory
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleCreateBackup}
+                disabled={creatingBackup}
+                className="px-3.5 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-600 text-white text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer self-start sm:self-auto"
+              >
+                <Plus className={`w-3.5 h-3.5 ${creatingBackup ? 'animate-spin' : ''}`} />
+                <span>{creatingBackup ? 'Creating...' : 'Create Instant Backup Snapshot'}</span>
+              </button>
+            </div>
+
+            {/* Backups Table */}
+            {(!dbStatus?.backups || dbStatus.backups.length === 0) ? (
+              <div className="py-8 text-center text-slate-400 text-xs">
+                No backup snapshots found in data/backups/. Click "Create Instant Backup Snapshot" above to generate your first recovery point.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 dark:bg-[#172132] text-slate-500 uppercase font-mono text-[10px]">
+                    <tr>
+                      <th className="p-2.5">Snapshot Filename</th>
+                      <th className="p-2.5">Format</th>
+                      <th className="p-2.5">File Size</th>
+                      <th className="p-2.5">Created Timestamp</th>
+                      <th className="p-2.5 text-right">Verification</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-[#1E2A3E]">
+                    {dbStatus.backups.map((b) => (
+                      <tr key={b.fileName} className="hover:bg-slate-50/50 dark:hover:bg-[#172132]/50">
+                        <td className="p-2.5 font-mono font-medium text-slate-900 dark:text-white flex items-center gap-2">
+                          <HardDrive className="w-3.5 h-3.5 text-slate-400" />
+                          <span>{b.fileName}</span>
+                        </td>
+                        <td className="p-2.5">
+                          <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 uppercase font-semibold">
+                            {b.type}
+                          </span>
+                        </td>
+                        <td className="p-2.5 font-mono text-slate-500">
+                          {(b.size / 1024).toFixed(1)} KB
+                        </td>
+                        <td className="p-2.5 font-mono text-slate-500 text-[11px]">
+                          {new Date(b.createdAt).toLocaleString('en-IN', {
+                            dateStyle: 'medium',
+                            timeStyle: 'medium',
+                          })}
+                        </td>
+                        <td className="p-2.5 text-right">
+                          <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Integrity Verified</span>
                           </span>
                         </td>
                       </tr>

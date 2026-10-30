@@ -1,6 +1,7 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { CRMProvider } from '@/context/CRMContext';
+import { ToastProvider } from '@/context/ToastContext';
 import AppShell from '@/components/AppShell';
 
 export const metadata: Metadata = {
@@ -41,9 +42,11 @@ export default function RootLayout({
       </head>
       <body className="bg-[#F8FAFC] dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 antialiased selection:bg-blue-600 selection:text-white transition-colors duration-150">
         <CRMProvider>
-          <AppShell>
-            {children}
-          </AppShell>
+          <ToastProvider>
+            <AppShell>
+              {children}
+            </AppShell>
+          </ToastProvider>
         </CRMProvider>
       </body>
     </html>

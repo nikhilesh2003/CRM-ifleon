@@ -24,6 +24,14 @@ import {
   HelpCircle,
   Settings,
   User as UserIcon,
+  Menu,
+  LayoutDashboard,
+  FolderKanban,
+  FileCheck2,
+  CalendarCheck,
+  BarChart3,
+  History,
+  UserCog,
 } from 'lucide-react';
 import { Lead } from '@/lib/types';
 
@@ -33,6 +41,7 @@ export default function Navbar() {
   const [isQuickCreateOpen, setIsQuickCreateOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [globalSearch, setGlobalSearch] = useState('');
   const [searchResults, setSearchResults] = useState<Lead[]>([]);
@@ -128,8 +137,16 @@ export default function Navbar() {
     <>
       <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-[#1E2A3E] bg-white dark:bg-[#111925] shadow-xs">
         <div className="flex h-15 items-center justify-between px-4 sm:px-6 gap-4">
-          {/* Left: Brand Identity */}
-          <div className="flex items-center gap-4 flex-shrink-0">
+          {/* Left: Brand Identity & Mobile Hamburger */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="md:hidden p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#172132] transition"
+              title="Open Navigation Menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
             <Link href="/" className="flex items-center gap-3 group">
               <div className="h-9 flex items-center">
                 <img
@@ -478,6 +495,213 @@ export default function Navbar() {
             <div className="p-2.5 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400 font-mono">
               <span>Press ESC to close</span>
               <span>iFleon CRM</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Responsive Mobile Drawer */}
+      {isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        >
+          <div
+            className="w-72 max-w-[85vw] h-full bg-white dark:bg-[#111925] border-r border-slate-200 dark:border-[#1E2A3E] flex flex-col justify-between shadow-2xl animate-in slide-in-from-left duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 space-y-4 overflow-y-auto">
+              {/* Drawer Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-[#1E2A3E]">
+                <div className="flex items-center gap-2.5">
+                  <img
+                    src={
+                      isDark
+                        ? settings?.darkLogoUrl || '/logo-dark-horizontal.png'
+                        : settings?.lightLogoUrl || settings?.horizontalLogoUrl || '/logo-light-horizontal.png'
+                    }
+                    alt={settings?.name || 'iFleon'}
+                    className="h-7 w-auto object-contain"
+                  />
+                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 uppercase">
+                    CRM
+                  </span>
+                </div>
+                <button
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  title="Close Menu"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* User Identity Mini Card */}
+              <div className="p-3 rounded-lg bg-slate-50 dark:bg-[#172132] border border-slate-200 dark:border-[#1E2A3E] flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center justify-center font-bold text-xs font-mono">
+                  {currentUser.name
+                    .split(' ')
+                    .map((n) => n[0])
+                    .join('')
+                    .slice(0, 2)}
+                </div>
+                <div className="overflow-hidden">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                    {currentUser.name}
+                  </div>
+                  <div className="text-[10px] font-mono uppercase text-blue-600 dark:text-blue-400 font-semibold">
+                    {currentUser.role}
+                  </div>
+                </div>
+              </div>
+
+              {/* Navigation Links */}
+              <nav className="space-y-4 text-xs">
+                {/* Section 1: Sales & Pipeline */}
+                <div className="space-y-1">
+                  <span className="px-2 text-[10px] font-mono uppercase tracking-wider font-bold text-slate-400 block mb-1">
+                    Sales & Pipeline
+                  </span>
+                  <Link
+                    href="/"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#172132] font-medium"
+                  >
+                    <LayoutDashboard className="w-4 h-4 text-blue-600" />
+                    <span>Executive Dashboard</span>
+                  </Link>
+                  <Link
+                    href="/leads"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#172132] font-medium"
+                  >
+                    <Users className="w-4 h-4 text-blue-600" />
+                    <span>Lead Pipeline</span>
+                  </Link>
+                  {(currentUser.role === 'admin' || currentUser.role === 'manager') && (
+                    <Link
+                      href="/projects"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#172132] font-medium"
+                    >
+                      <FolderKanban className="w-4 h-4 text-blue-600" />
+                      <span>Campaign Projects</span>
+                    </Link>
+                  )}
+                </div>
+
+                {/* Section 2: Activities & Review */}
+                <div className="space-y-1">
+                  <span className="px-2 text-[10px] font-mono uppercase tracking-wider font-bold text-slate-400 block mb-1">
+                    Activities & Approvals
+                  </span>
+                  {(currentUser.role === 'admin' || currentUser.role === 'manager') && (
+                    <Link
+                      href="/review-inbox"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#172132] font-medium"
+                    >
+                      <FileCheck2 className="w-4 h-4 text-amber-600" />
+                      <span>Review Inbox</span>
+                    </Link>
+                  )}
+                  <Link
+                    href="/tasks"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#172132] font-medium"
+                  >
+                    <CalendarCheck className="w-4 h-4 text-emerald-600" />
+                    <span>Tasks & Due Follow-ups</span>
+                  </Link>
+                </div>
+
+                {/* Section 3: Commercial Assets */}
+                <div className="space-y-1">
+                  <span className="px-2 text-[10px] font-mono uppercase tracking-wider font-bold text-slate-400 block mb-1">
+                    Commercial Proposals
+                  </span>
+                  <Link
+                    href="/quotations"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#172132] font-medium"
+                  >
+                    <FileText className="w-4 h-4 text-indigo-600" />
+                    <span>Quotations & Presentations</span>
+                  </Link>
+                </div>
+
+                {/* Section 4: Analytics */}
+                <div className="space-y-1">
+                  <span className="px-2 text-[10px] font-mono uppercase tracking-wider font-bold text-slate-400 block mb-1">
+                    Analytics & Compliance
+                  </span>
+                  <Link
+                    href="/analytics"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#172132] font-medium"
+                  >
+                    <BarChart3 className="w-4 h-4 text-teal-600" />
+                    <span>Reports & Performance</span>
+                  </Link>
+                  {(currentUser.role === 'admin' || currentUser.role === 'manager') && (
+                    <Link
+                      href="/audit-log"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#172132] font-medium"
+                    >
+                      <History className="w-4 h-4 text-slate-500" />
+                      <span>Audit Trail</span>
+                    </Link>
+                  )}
+                </div>
+
+                {/* Section 5: Administration */}
+                {currentUser.role === 'admin' && (
+                  <div className="space-y-1">
+                    <span className="px-2 text-[10px] font-mono uppercase tracking-wider font-bold text-slate-400 block mb-1">
+                      Administration
+                    </span>
+                    <Link
+                      href="/admin/users"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#172132] font-medium"
+                    >
+                      <UserCog className="w-4 h-4 text-blue-600" />
+                      <span>User Access Control</span>
+                    </Link>
+                    <Link
+                      href="/admin/settings"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#172132] font-medium"
+                    >
+                      <Settings className="w-4 h-4 text-blue-600" />
+                      <span>System Settings</span>
+                    </Link>
+                  </div>
+                )}
+              </nav>
+            </div>
+
+            {/* Drawer Footer with Actions */}
+            <div className="p-4 border-t border-slate-100 dark:border-[#1E2A3E] space-y-2 bg-slate-50/50 dark:bg-[#0B0F19]">
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  openTutorial();
+                }}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-semibold"
+              >
+                <HelpCircle className="w-4 h-4" />
+                <span>Replay Role Tutorial</span>
+              </button>
+
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 text-xs font-semibold"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Sign Out</span>
+              </button>
             </div>
           </div>
         </div>

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCRM } from '@/context/CRMContext';
+import { useToast } from '@/context/ToastContext';
 import { Lead, MeetingNote, TaskItem, GeneratedDocument, MeetingType, LeadStatus } from '@/lib/types';
 import {
   Users,
@@ -46,6 +47,7 @@ export default function LeadDetailClient() {
   const params = useParams();
   const router = useRouter();
   const { currentUser, allUsers } = useCRM();
+  const { toast } = useToast();
 
   const [lead, setLead] = useState<Lead | null>(null);
   const [meetings, setMeetings] = useState<MeetingNote[]>([]);
@@ -148,7 +150,7 @@ export default function LeadDetailClient() {
   // Pipeline Stepper stage click
   const handleStageClick = async (targetStage: LeadStatus) => {
     if (!canEdit) {
-      alert('You only have permission to edit leads assigned to you.');
+      toast.warning('You only have permission to edit leads assigned to your account.', 'Access Restricted');
       return;
     }
 
@@ -171,9 +173,11 @@ export default function LeadDetailClient() {
           currentUser,
         }),
       });
+      toast.success(`Pipeline stage transitioned to "${targetStage}".`, 'Stage Updated');
       fetchLeadData();
     } catch (e) {
       console.error(e);
+      toast.error('Failed to update pipeline stage.');
     }
   };
 
@@ -181,7 +185,7 @@ export default function LeadDetailClient() {
   const handleConfirmWon = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!wonAmountInput || Number(wonAmountInput) <= 0) {
-      alert('Final deal amount is required when status is Won.');
+      toast.error('Final deal amount is required when marking a lead as Won.', 'Missing Deal Value');
       return;
     }
 
@@ -197,9 +201,11 @@ export default function LeadDetailClient() {
         }),
       });
       setIsWonModalOpen(false);
+      toast.success(`Deal marked as Won (₹${Number(wonAmountInput).toLocaleString('en-IN')}) and routed for managerial review.`, 'Deal Won');
       fetchLeadData();
     } catch (e) {
       console.error(e);
+      toast.error('Failed to update deal status.');
     }
   };
 
@@ -207,7 +213,7 @@ export default function LeadDetailClient() {
   const handleConfirmLost = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!lostReasonInput.trim()) {
-      alert('Reason for lost is required.');
+      toast.error('Reason for lost status is mandatory for audit compliance.', 'Missing Lost Reason');
       return;
     }
 
@@ -960,9 +966,10 @@ export default function LeadDetailClient() {
               </h3>
               <button
                 onClick={() => setIsMeetingModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 text-xs"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition p-1"
+                title="Close"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
