@@ -294,3 +294,47 @@ export interface DatabaseStatus {
   error?: string;
 }
 
+export interface GitCommitItem {
+  hash: string;
+  shortHash: string;
+  author: string;
+  date: string;
+  message: string;
+  isCurrent?: boolean;
+}
+
+export interface HostingerServerInfo {
+  host: string;
+  port: number;
+  subdomain: string;
+  deployTarget: string;
+  engine: string;
+  phpVersion: string;
+  webServer: string;
+  diskFree?: string;
+  diskTotal?: string;
+  memoryUsage?: string;
+}
+
+export interface DeploymentStatus {
+  status: 'healthy' | 'deploying' | 'degraded' | 'offline';
+  environment: 'production' | 'staging' | 'local';
+  deployedAt: string;
+  commitHash: string;
+  shortHash: string;
+  branch: string;
+  commitMessage: string;
+  commitAuthor: string;
+  commitDate: string;
+  buildVersion: string;
+  server: HostingerServerInfo;
+  recentCommits: GitCommitItem[];
+  livePing?: {
+    status: number;
+    latencyMs: number;
+    ssl: boolean;
+    timestamp: string;
+  };
+}
+
+

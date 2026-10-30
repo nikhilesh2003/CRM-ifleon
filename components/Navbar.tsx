@@ -32,12 +32,15 @@ import {
   BarChart3,
   History,
   UserCog,
+  GitCommit,
+  GitBranch,
 } from 'lucide-react';
 import { Lead } from '@/lib/types';
 
 export default function Navbar() {
   const router = useRouter();
   const { currentUser, isDark, toggleDarkMode, logout, openTutorial, settings } = useCRM();
+  const [deployCommit, setDeployCommit] = useState<string>('b0f1887');
   const [isQuickCreateOpen, setIsQuickCreateOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -48,6 +51,15 @@ export default function Navbar() {
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
 
   const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetch('/api/admin/deployment')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.shortHash) setDeployCommit(d.shortHash);
+      })
+      .catch(() => {});
+  }, []);
 
   // Close menus on outside click or Escape
   useEffect(() => {
@@ -263,6 +275,18 @@ export default function Navbar() {
               )}
             </div>
 
+            {/* Hostinger Production & Git Commit Monitor Pill */}
+            <Link
+              href="/admin/settings?tab=deployment"
+              title="Hostinger Production Deployment & Git Commit Monitor"
+              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono border border-slate-200 dark:border-[#1E2A3E] bg-slate-50/80 dark:bg-[#172132]/80 hover:bg-slate-100 dark:hover:bg-[#1c283d] transition text-slate-600 dark:text-slate-300"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <GitCommit className="w-3 h-3 text-blue-500" />
+              <span className="text-slate-400 dark:text-slate-500">main:</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-200">{deployCommit}</span>
+            </Link>
+
             {/* Dark / Light Toggle */}
             <button
               onClick={toggleDarkMode}
@@ -348,14 +372,29 @@ export default function Navbar() {
                     </button>
 
                     {currentUser.role === 'admin' && (
-                      <Link
-                        href="/admin/settings"
-                        onClick={() => setIsProfileMenuOpen(false)}
-                        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#172132] font-medium transition text-left"
-                      >
-                        <Settings className="w-4 h-4 text-slate-500" />
-                        <div>Enterprise Settings</div>
-                      </Link>
+                      <>
+                        <Link
+                          href="/admin/settings?tab=deployment"
+                          onClick={() => setIsProfileMenuOpen(false)}
+                          className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#172132] font-medium transition text-left"
+                        >
+                          <GitCommit className="w-4 h-4 text-emerald-600" />
+                          <div>
+                            <div>Hostinger Deployment & Git</div>
+                            <div className="text-[10px] text-slate-400 font-mono font-normal">
+                              main: {deployCommit}
+                            </div>
+                          </div>
+                        </Link>
+                        <Link
+                          href="/admin/settings"
+                          onClick={() => setIsProfileMenuOpen(false)}
+                          className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#172132] font-medium transition text-left"
+                        >
+                          <Settings className="w-4 h-4 text-slate-500" />
+                          <div>Enterprise Settings</div>
+                        </Link>
+                      </>
                     )}
                   </div>
 
@@ -676,6 +715,14 @@ export default function Navbar() {
                     >
                       <Settings className="w-4 h-4 text-blue-600" />
                       <span>System Settings</span>
+                    </Link>
+                    <Link
+                      href="/admin/settings?tab=deployment"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#172132] font-medium"
+                    >
+                      <GitCommit className="w-4 h-4 text-emerald-600" />
+                      <span>Hostinger & Git Deployment</span>
                     </Link>
                   </div>
                 )}

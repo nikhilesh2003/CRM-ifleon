@@ -2,11 +2,15 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 const { Client } = require('ssh2');
+const { generateDeploymentInfo } = require('./generate_deployment_info');
 
 const rootDir = path.join(__dirname, '..');
 const outDir = path.join(rootDir, 'out');
 
 console.log('1. Preparing out/ directory...');
+
+// Generate deployment & git commit metadata
+generateDeploymentInfo();
 
 // Ensure out/api directory exists
 const apiDir = path.join(outDir, 'api');
@@ -32,6 +36,12 @@ const srcDbConfig = path.join(rootDir, 'data', 'db-config.json');
 if (fs.existsSync(srcDbConfig)) {
   fs.copyFileSync(srcDbConfig, path.join(outDataDir, 'db-config.json'));
   console.log('   Copied data/db-config.json');
+}
+const srcDepInfo = path.join(rootDir, 'data', 'deployment-info.json');
+if (fs.existsSync(srcDepInfo)) {
+  fs.copyFileSync(srcDepInfo, path.join(outDataDir, 'deployment-info.json'));
+  fs.copyFileSync(srcDepInfo, path.join(outDir, 'deployment-info.json'));
+  console.log('   Copied data/deployment-info.json to out directory');
 }
 
 // Copy page.html to directory/index.html so both /route and /route/ work with 0 redirects!
@@ -139,7 +149,14 @@ conn.on('ready', () => {
           sftp.fastPut(localPhp, remotePhp, (syncErr) => {
             if (syncErr) console.error('Direct PHP sync error:', syncErr);
             else console.log('Successfully verified and uploaded api/index.php directly via SFTP!');
-            conn.end();
+
+            const localDep = path.join(rootDir, 'data', 'deployment-info.json');
+            const remoteDep = remoteTargetDir + '/data/deployment-info.json';
+            sftp.fastPut(localDep, remoteDep, (depErr) => {
+              if (depErr) console.warn('Deployment info sync notice:', depErr.message);
+              else console.log('Successfully uploaded data/deployment-info.json to remote server!');
+              conn.end();
+            });
           });
         });
         stream.on('data', d => process.stdout.write(d.toString()));
