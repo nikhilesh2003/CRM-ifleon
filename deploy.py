@@ -30,6 +30,14 @@ import urllib.request
 import urllib.error
 from datetime import datetime
 
+# Configure Windows UTF-8 stdout/stderr handling
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 # ======================== CONFIGURATION ========================
 SERVER_CONFIG = {
     "host": "86.38.243.155",
@@ -59,12 +67,16 @@ def log_step(step_num, title):
     print(f"\n{Color.BOLD}{Color.CYAN}[Step {step_num}] {title}{Color.RESET}")
 
 def log_success(msg):
-    print(f"  {Color.GREEN}✓ {msg}{Color.RESET}")
+    print(f"  {Color.GREEN}[OK] {msg}{Color.RESET}")
 
 def log_warning(msg):
-    print(f"  {Color.YELLOW}⚠ {msg}{Color.RESET}")
+    print(f"  {Color.YELLOW}[WARN] {msg}{Color.RESET}")
 
 def log_error(msg):
+    print(f"  {Color.RED}[ERR] {msg}{Color.RESET}")
+
+def log_info(msg):
+    print(f"  {Color.BLUE}[INFO] {msg}{Color.RESET}")
     print(f"  {Color.RED}✗ {msg}{Color.RESET}")
 
 def log_info(msg):
@@ -442,7 +454,7 @@ def main():
 
     total_duration = round(time.time() - start_total_time, 1)
     print(f"\n{Color.BOLD}{Color.GREEN}===================================================={Color.RESET}")
-    print(f"{Color.BOLD}{Color.GREEN}  ✓ DEPLOYMENT & COMMIT CYCLE COMPLETED IN {total_duration}s!{Color.RESET}")
+    print(f"{Color.BOLD}{Color.GREEN}  [SUCCESS] DEPLOYMENT & COMMIT CYCLE COMPLETED IN {total_duration}s!{Color.RESET}")
     print(f"  Live Site: {SERVER_CONFIG['live_url']}")
     print(f"{Color.BOLD}{Color.GREEN}===================================================={Color.RESET}\n")
 
