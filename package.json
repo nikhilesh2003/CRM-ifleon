@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "node scripts/move_api.js && next build && node scripts/restore_api.js",
+    "deploy": "python deploy.py",
+    "deploy:quick": "python deploy.py --no-build",
     "start": "next start",
     "lint": "next lint"
   },
